@@ -1,0 +1,4316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>PRISM — 全息撕卡包 · Holographic Archive</title>
+<style>
+  /* =========================================================
+     PRISM DESIGN TOKENS — DARKROOM STAGE & DAYLIGHT GALLERY
+     ========================================================= */
+  :root {
+    --bg-top: #05060b;
+    --bg-mid: #0b0e18;
+    --bg-bot: #040509;
+    --floor-top: rgba(18, 22, 38, 0.72);
+    --floor-bot: rgba(4, 5, 10, 0.96);
+    --floor-line: rgba(255, 255, 255, 0.08);
+    --beam-a: rgba(165, 195, 255, 0.07);
+    --beam-b: rgba(196, 152, 255, 0.06);
+    --beam-c: rgba(110, 232, 255, 0.055);
+    --spot-core: rgba(168, 188, 255, 0.14);
+    --spot-halo: rgba(154, 118, 255, 0.05);
+
+    --text-primary: #f4f6fc;
+    --text-secondary: rgba(226, 232, 248, 0.72);
+    --text-muted: rgba(188, 198, 224, 0.48);
+
+    --glass-bg: rgba(18, 22, 36, 0.62);
+    --glass-bg-hover: rgba(28, 34, 54, 0.78);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-border-strong: rgba(255, 255, 255, 0.24);
+    --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+    --modal-backdrop: rgba(4, 6, 12, 0.78);
+    --modal-panel: rgba(14, 18, 30, 0.88);
+
+    --accent-cyan: #56e4ff;
+    --accent-violet: #b68dff;
+    --accent-pink: #f487c8;
+    --accent-gold: #f7c95c;
+
+    --card-w: 196px;
+    --card-h: 282px;
+    --pack-w: 288px;
+    --pack-h: 438px;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  body.theme-daylight {
+    --bg-top: #f7f8fc;
+    --bg-mid: #eceff7;
+    --bg-bot: #dfe4f0;
+    --floor-top: rgba(255, 255, 255, 0.82);
+    --floor-bot: rgba(218, 225, 240, 0.92);
+    --floor-line: rgba(30, 42, 74, 0.1);
+    --beam-a: rgba(255, 255, 255, 0.78);
+    --beam-b: rgba(176, 196, 255, 0.24);
+    --beam-c: rgba(235, 198, 255, 0.22);
+    --spot-core: rgba(255, 255, 255, 0.92);
+    --spot-halo: rgba(154, 178, 255, 0.16);
+
+    --text-primary: #121626;
+    --text-secondary: rgba(22, 28, 48, 0.72);
+    --text-muted: rgba(36, 44, 72, 0.5);
+
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-bg-hover: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(20, 30, 58, 0.12);
+    --glass-border-strong: rgba(20, 30, 58, 0.24);
+    --glass-shadow: 0 12px 32px rgba(28, 40, 74, 0.11);
+    --modal-backdrop: rgba(232, 236, 248, 0.72);
+    --modal-panel: rgba(252, 253, 255, 0.94);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    background: var(--bg-top);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* =========================================================
+     STAGE ENVIRONMENT: SPOTLIGHT, LIGHT CURTAINS, MIRROR FLOOR
+     ========================================================= */
+  .stage-root {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(ellipse 80% 60% at 50% 18%, var(--spot-core) 0%, transparent 56%),
+                radial-gradient(ellipse 100% 70% at 50% 44%, var(--spot-halo) 0%, transparent 66%),
+                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 56%, var(--bg-bot) 100%);
+    transition: background 0.55s ease, color 0.35s ease;
+  }
+
+  /* Vertical architectural light-beam curtains */
+  .light-curtains {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .beam {
+    position: absolute;
+    top: -12%;
+    bottom: 18%;
+    width: 14%;
+    background: linear-gradient(180deg, var(--beam-a) 0%, var(--beam-b) 45%, transparent 100%);
+    filter: blur(22px);
+    transform-origin: top center;
+    opacity: 0.85;
+    animation: beamSway 11s ease-in-out infinite alternate;
+  }
+  .beam:nth-child(1) { left: 6%;  width: 9%;  animation-duration: 12s; animation-delay: -2s; }
+  .beam:nth-child(2) { left: 19%; width: 13%; background: linear-gradient(180deg, var(--beam-b) 0%, transparent 92%); animation-duration: 14s; animation-delay: -5s; }
+  .beam:nth-child(3) { left: 36%; width: 11%; background: linear-gradient(180deg, var(--beam-c) 0%, transparent 95%); animation-duration: 10s; animation-delay: -1s; }
+  .beam:nth-child(4) { left: 45%; width: 10%; background: linear-gradient(180deg, var(--beam-a) 0%, var(--beam-c) 55%, transparent 100%); animation-duration: 13s; animation-delay: -3s; opacity: 1; }
+  .beam:nth-child(5) { left: 58%; width: 12%; background: linear-gradient(180deg, var(--beam-b) 0%, transparent 90%); animation-duration: 15s; animation-delay: -7s; }
+  .beam:nth-child(6) { left: 74%; width: 10%; animation-duration: 11.5s; animation-delay: -4s; }
+  .beam:nth-child(7) { left: 86%; width: 8%;  background: linear-gradient(180deg, var(--beam-c) 0%, transparent 88%); animation-duration: 13.5s; animation-delay: -6s; }
+
+  @keyframes beamSway {
+    0% { transform: translateX(-10px) skewX(-2deg) scaleY(1); opacity: 0.65; }
+    100% { transform: translateX(12px) skewX(2.5deg) scaleY(1.06); opacity: 1; }
+  }
+
+  /* Subtle overhead optical vignette & glass halo */
+  .stage-overhead {
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 680px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.22) 0%, rgba(162,188,255,0.08) 45%, transparent 72%);
+    filter: blur(24px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Mirror Floor */
+  .stage-floor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 27vh;
+    min-height: 168px;
+    background: linear-gradient(180deg, var(--floor-top) 0%, var(--floor-bot) 100%);
+    border-top: 1px solid var(--floor-line);
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .stage-floor::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 52% 58% at 50% 0%, rgba(190, 178, 255, 0.22) 0%, rgba(110, 218, 255, 0.08) 38%, transparent 72%);
+    transition: opacity 0.5s ease;
+  }
+
+  .stage-floor::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(760px, 88vw);
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%);
+    opacity: 0.7;
+  }
+
+  /* Full-screen Canvas FX Layer */
+  #fx-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 45;
+  }
+
+  /* =========================================================
+     TOP HUD & BOTTOM CHROME (OPTICAL GLASS)
+     ========================================================= */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 76px;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  .top-left, .top-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+  }
+
+  .top-right {
+    justify-content: flex-end;
+  }
+
+  .brand-wordmark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: auto;
+    cursor: default;
+  }
+
+  .brand-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.46em;
+    padding-left: 0.46em;
+    background: linear-gradient(135deg, var(--text-primary) 0%, #c8d8ff 46%, #e7b8ff 74%, var(--text-primary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 24px rgba(176, 198, 255, 0.2);
+  }
+
+  body.theme-daylight .brand-title {
+    background: linear-gradient(135deg, #0d1222 0%, #3b4a7a 48%, #6d4c9c 76%, #0d1222 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+  }
+
+  .brand-sub {
+    font-size: 9px;
+    letter-spacing: 0.36em;
+    padding-left: 0.36em;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .glass-btn {
+    appearance: none;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--text-primary);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 999px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                background 0.2s ease,
+                border-color 0.2s ease,
+                box-shadow 0.25s ease;
+    white-space: nowrap;
+  }
+
+  .glass-btn:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-strong);
+    transform: translateY(-1px);
+  }
+
+  .glass-btn:active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  .glass-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .glass-btn.god-armed {
+    border-color: rgba(247, 201, 92, 0.65);
+    background: linear-gradient(135deg, rgba(164, 118, 255, 0.28), rgba(247, 201, 92, 0.26), rgba(86, 228, 255, 0.24));
+    box-shadow: 0 0 22px rgba(247, 201, 92, 0.28), inset 0 0 12px rgba(255, 255, 255, 0.14);
+  }
+
+  .god-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .glass-btn.god-armed .god-dot {
+    background: #ffd86b;
+    box-shadow: 0 0 10px #ffd86b, 0 0 18px #f487c8;
+  }
+
+  /* Bottom Bar */
+  .bottom-hud {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0 24px 22px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: flex-end;
+    z-index: 30;
+    pointer-events: none;
+  }
+
+  .bottom-left {
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+  }
+
+  .bottom-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+  }
+
+  .codex-btn {
+    height: 40px;
+    padding: 0 16px;
+    font-size: 13px;
+  }
+
+  .codex-count {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(130, 170, 255, 0.16);
+    border: 1px solid var(--glass-border);
+    font-size: 11.5px;
+  }
+
+  .stage-hint {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    padding: 7px 18px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: all 0.35s ease;
+    text-align: center;
+    max-width: 90vw;
+  }
+
+  .stage-hint.sensed {
+    color: var(--text-primary);
+    border-color: var(--sense-color, rgba(160, 210, 255, 0.55));
+    box-shadow: 0 0 24px color-mix(in srgb, var(--sense-color, #68d8ff) 28%, transparent);
+  }
+
+  .action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .action-row.hidden {
+    display: none;
+  }
+
+  .primary-btn {
+    height: 42px;
+    padding: 0 24px;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(220,232,255,0.9));
+    color: #0d1222;
+    border: 1px solid rgba(255,255,255,0.75);
+    box-shadow: 0 10px 28px rgba(120, 165, 255, 0.25);
+  }
+
+  .primary-btn:hover {
+    background: #ffffff;
+    box-shadow: 0 12px 34px rgba(140, 185, 255, 0.4);
+  }
+
+  body.theme-daylight .primary-btn {
+    background: linear-gradient(135deg, #161c32, #293356);
+    color: #ffffff;
+    border-color: rgba(20, 30, 58, 0.8);
+    box-shadow: 0 10px 26px rgba(24, 34, 68, 0.22);
+  }
+
+  body.theme-daylight .primary-btn:hover {
+    background: #0e1324;
+  }
+
+  /* =========================================================
+     CENTER STAGE: PACK VIEW
+     ========================================================= */
+  .center-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .pack-scene {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-10px);
+    transition: opacity 0.5s ease, transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .pack-scene.pack-hidden {
+    opacity: 0;
+    transform: translateY(80px) scale(0.86);
+    pointer-events: none;
+  }
+
+  .guarantee-badge {
+    margin-bottom: 16px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--text-primary);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border-strong);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  }
+
+  .guarantee-badge .spark {
+    color: #f7c95c;
+    font-size: 12px;
+  }
+
+  .pack-stage-wrap {
+    position: relative;
+    width: var(--pack-w);
+    height: var(--pack-h);
+    perspective: 1100px;
+  }
+
+  /* Rarity aura glowing from top seal when shaken */
+  .pack-aura {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.75);
+    width: calc(var(--pack-w) + 64px);
+    height: 130px;
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(26px);
+    pointer-events: none;
+    transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 1;
+  }
+
+  .pack-aura.active {
+    opacity: 0.92;
+    transform: translateX(-50%) scale(1.06);
+    animation: auraPulse 2.2s ease-in-out infinite;
+  }
+
+  .pack-aura.aura-common {
+    background: radial-gradient(ellipse at center, rgba(168, 194, 224, 0.72) 0%, rgba(112, 140, 178, 0.25) 55%, transparent 76%);
+  }
+  .pack-aura.aura-holo {
+    background: radial-gradient(ellipse at center, rgba(86, 228, 255, 0.85) 0%, rgba(164, 128, 255, 0.52) 48%, transparent 76%);
+  }
+  .pack-aura.aura-ultra {
+    background: radial-gradient(ellipse at center, rgba(255, 222, 118, 0.96) 0%, rgba(255, 160, 56, 0.62) 46%, transparent 76%);
+  }
+  .pack-aura.aura-secret {
+    background: conic-gradient(from 0deg, #ff6bd6, #ffd86b, #56f0ff, #b87dff, #ff6bd6);
+    filter: blur(30px);
+  }
+
+  @keyframes auraPulse {
+    0%, 100% { opacity: 0.8; transform: translateX(-50%) scale(1.02); }
+    50% { opacity: 1; transform: translateX(-50%) scale(1.12); }
+  }
+
+  /* Pack 3D tilt & vibration wrapper */
+  .pack-body-tilt {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+    z-index: 3;
+    touch-action: none;
+  }
+
+  .pack-body-tilt.vibrating {
+    animation: packMicroVibe 0.09s linear infinite;
+  }
+
+  @keyframes packMicroVibe {
+    0%   { translate: -1.2px 0.4px; }
+    25%  { translate: 1.3px -0.5px; }
+    50%  { translate: -0.9px -0.6px; }
+    75%  { translate: 1.1px 0.5px; }
+    100% { translate: -1.2px 0.4px; }
+  }
+
+  /* The Metallic Foil Booster Pack Body */
+  .pack-foil {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+      linear-gradient(155deg,
+        #eaedf6 0%,
+        #d2d0ec 18%,
+        #b89fe8 38%,
+        #e2a3d4 58%,
+        #cfd8ee 78%,
+        #b4a7de 100%);
+    box-shadow:
+      0 26px 56px rgba(0, 0, 0, 0.52),
+      0 0 0 1px rgba(255, 255, 255, 0.48),
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      inset 0 -1px 0 rgba(88, 66, 130, 0.4),
+      inset 14px 0 24px rgba(255, 255, 255, 0.24),
+      inset -14px 0 24px rgba(72, 52, 118, 0.26);
+    cursor: grab;
+  }
+
+  .pack-foil:active {
+    cursor: grabbing;
+  }
+
+  body.theme-daylight .pack-foil {
+    box-shadow:
+      0 24px 50px rgba(38, 48, 86, 0.24),
+      0 0 0 1px rgba(255, 255, 255, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 14px 0 24px rgba(255, 255, 255, 0.28),
+      inset -14px 0 24px rgba(72, 52, 118, 0.22);
+  }
+
+  /* Dynamic iridescent mouse-reactive sheen on pack foil */
+  .pack-holo-sheen {
+    position: absolute;
+    inset: -30%;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        var(--foil-angle, 125deg),
+        transparent 16%,
+        rgba(255, 255, 255, 0.14) 28%,
+        rgba(128, 240, 255, 0.36) 38%,
+        rgba(255, 175, 244, 0.42) 48%,
+        rgba(255, 245, 180, 0.32) 56%,
+        rgba(176, 150, 255, 0.28) 65%,
+        transparent 78%
+      );
+    transform: translate(var(--foil-x, 0%), var(--foil-y, 0%));
+    mix-blend-mode: screen;
+    opacity: 0.82;
+    transition: opacity 0.25s ease;
+  }
+
+  /* Subtle pillow curvature specular bands */
+  .pack-specular {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg,
+        rgba(255,255,255,0.34) 0%,
+        rgba(255,255,255,0.06) 8%,
+        transparent 18%,
+        transparent 82%,
+        rgba(46,32,84,0.14) 92%,
+        rgba(255,255,255,0.22) 100%),
+      radial-gradient(ellipse 75% 42% at var(--spot-x, 50%) var(--spot-y, 35%),
+        rgba(255,255,255,0.34) 0%,
+        transparent 68%);
+  }
+
+  /* Bottom crimped foil seal ridges */
+  .pack-crimp-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 18px;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.28) 0px,
+      rgba(255,255,255,0.28) 3px,
+      rgba(66,48,108,0.18) 3px,
+      rgba(66,48,108,0.18) 6px
+    );
+    border-top: 1px solid rgba(255,255,255,0.36);
+    pointer-events: none;
+  }
+
+  /* Pack front typography & central mascot */
+  .pack-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 66px 20px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    color: #1c1830;
+    pointer-events: none;
+  }
+
+  .pack-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .pack-logo {
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    padding-left: 0.3em;
+    color: #ffffff;
+    text-shadow: 0 2px 12px rgba(72, 46, 128, 0.42), 0 0 1px rgba(255,255,255,0.9);
+  }
+
+  .pack-edition {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(24, 18, 46, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.44);
+    color: #ffffff;
+    backdrop-filter: blur(4px);
+  }
+
+  .pack-series {
+    margin-top: 3px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: rgba(34, 24, 62, 0.78);
+  }
+
+  .pack-mascot-wrap {
+    position: relative;
+    width: 146px;
+    height: 146px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pack-mascot-ring {
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.48);
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.34), rgba(164,132,240,0.12) 60%, transparent 100%);
+    box-shadow: inset 0 0 20px rgba(255,255,255,0.35), 0 8px 26px rgba(96, 62, 160, 0.22);
+  }
+
+  .pack-mascot-svg {
+    position: relative;
+    width: 118px;
+    height: 118px;
+    filter: drop-shadow(0 8px 16px rgba(74, 48, 126, 0.34));
+    animation: mascotFloat 4.2s ease-in-out infinite;
+  }
+
+  @keyframes mascotFloat {
+    0%, 100% { transform: translateY(0px) rotate(-1.5deg); }
+    50% { transform: translateY(-5px) rotate(1.5deg); }
+  }
+
+  .pack-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+  }
+
+  .pack-cards-count {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.24em;
+    padding-left: 0.24em;
+    color: #ffffff;
+    text-shadow: 0 1px 8px rgba(62, 38, 114, 0.42);
+  }
+
+  .pack-meta-line {
+    font-family: var(--font-mono);
+    font-size: 8.6px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: rgba(34, 22, 62, 0.82);
+    padding-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.42);
+    width: 88%;
+  }
+
+  /* High-DPI 96-segment Tear Strip Canvas */
+  #tear-canvas {
+    position: absolute;
+    top: -66px;
+    left: -34px;
+    width: calc(var(--pack-w) + 148px);
+    height: 162px;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  /* Interactive hit zone right over the top SEAL strip */
+  .tear-hit-zone {
+    position: absolute;
+    top: -8px;
+    left: -10px;
+    width: calc(var(--pack-w) + 20px);
+    height: 68px;
+    z-index: 8;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  /* Pack ground reflection */
+  .pack-reflection {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: -66px;
+    height: 54px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(180, 152, 245, 0.34) 0%, rgba(120, 210, 255, 0.12) 48%, transparent 74%);
+    filter: blur(12px);
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.4s ease;
+  }
+
+  /* =========================================================
+     CARDS STAGE (5 EJECTED CARDS)
+     ========================================================= */
+  .cards-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 14;
+    padding: 84px 20px 110px;
+  }
+
+  .cards-stage.active {
+    pointer-events: auto;
+  }
+
+  .cards-fan {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 1120px;
+    perspective: 1400px;
+  }
+
+  .card-slot {
+    position: relative;
+    width: var(--card-w);
+    height: var(--card-h);
+    flex-shrink: 0;
+    opacity: 0;
+    transform: translate3d(var(--eject-x, 0px), var(--eject-y, 180px), 0) scale(0.45) rotate(var(--eject-rot, 0deg));
+    transition: transform 0.72s cubic-bezier(0.22, 1.18, 0.36, 1), opacity 0.35s ease;
+    cursor: pointer;
+  }
+
+  .card-slot.landed {
+    opacity: 1;
+    transform: translate3d(0, var(--fan-y, 0px), 0) scale(1) rotate(var(--fan-rot, 0deg));
+  }
+
+  .card-slot.landed:hover {
+    transform: translate3d(0, calc(var(--fan-y, 0px) - 12px), 0) scale(1.04) rotate(0deg);
+    z-index: 5;
+  }
+
+  .card-slot::after {
+    content: "";
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    bottom: -24px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, transparent 72%);
+    filter: blur(5px);
+    pointer-events: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  body.theme-daylight .card-slot::after {
+    background: radial-gradient(ellipse at center, rgba(28, 40, 74, 0.24) 0%, transparent 72%);
+  }
+
+  .card-3d {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.72s cubic-bezier(0.24, 1.08, 0.34, 1);
+  }
+
+  .card-slot.flipped .card-3d {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+
+  /* CARD BACK */
+  .card-back {
+    background:
+      radial-gradient(circle at 50% 48%, #162e66 0%, #0a1533 52%, #050a1a 100%);
+    border: 1.5px solid rgba(110, 232, 255, 0.58);
+    box-shadow:
+      0 14px 30px rgba(0, 0, 0, 0.46),
+      0 0 18px rgba(86, 228, 255, 0.22),
+      0 0 28px rgba(244, 135, 200, 0.16),
+      inset 0 0 22px rgba(86, 228, 255, 0.16);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 12px;
+  }
+
+  .card-back::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 10px;
+    border: 1px solid rgba(244, 135, 200, 0.36);
+    box-shadow: inset 0 0 16px rgba(86, 228, 255, 0.15);
+    pointer-events: none;
+  }
+
+  .card-back-top {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    color: rgba(154, 236, 255, 0.85);
+    z-index: 2;
+  }
+
+  .card-back-emblem {
+    position: relative;
+    width: 112px;
+    height: 112px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .card-back-bottom {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: rgba(244, 174, 220, 0.88);
+    z-index: 2;
+  }
+
+  /* CARD FRONT */
+  .card-front {
+    transform: rotateY(180deg);
+    background: #0d1220;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Reusable Card Visual Component (used in Stage, Inspect, and Codex) */
+  .prism-card {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg, linear-gradient(160deg, #131a2c, #0a0e19));
+    border: 1.5px solid var(--card-border, rgba(164, 184, 218, 0.38));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    color: #f4f7ff;
+  }
+
+  /* Rarity visual themes */
+  .prism-card.r-common {
+    --card-bg: linear-gradient(162deg, #1a2335 0%, #101726 55%, #0b101b 100%);
+    --card-border: rgba(158, 178, 206, 0.45);
+    --rarity-accent: #9bb4d4;
+    --rarity-pill-bg: rgba(138, 162, 196, 0.22);
+    --holo-opacity: 0.16;
+  }
+  .prism-card.r-rare {
+    --card-bg: linear-gradient(162deg, #1a2138 0%, #16182c 55%, #0d101c 100%);
+    --card-border: rgba(110, 214, 194, 0.55);
+    --rarity-accent: #5fe3c4;
+    --rarity-pill-bg: rgba(84, 216, 186, 0.2);
+    --holo-opacity: 0.32;
+  }
+  .prism-card.r-holo {
+    --card-bg: linear-gradient(160deg, #1b173a 0%, #111b36 52%, #18102b 100%);
+    --card-border: rgba(156, 148, 255, 0.72);
+    --rarity-accent: #9ce6ff;
+    --rarity-pill-bg: rgba(128, 164, 255, 0.26);
+    --holo-opacity: 0.62;
+  }
+  .prism-card.r-ultra {
+    --card-bg: linear-gradient(158deg, #251d12 0%, #141930 50%, #24190d 100%);
+    --card-border: rgba(248, 204, 96, 0.85);
+    --rarity-accent: #ffd970;
+    --rarity-pill-bg: rgba(248, 196, 78, 0.26);
+    --holo-opacity: 0.76;
+  }
+  .prism-card.r-secret {
+    --card-bg: linear-gradient(155deg, #18153b 0%, #0f1e3a 48%, #291334 100%);
+    --card-border: rgba(255, 196, 246, 0.92);
+    --rarity-accent: #ff9ef5;
+    --rarity-pill-bg: linear-gradient(90deg, rgba(86, 228, 255, 0.3), rgba(244, 135, 200, 0.34), rgba(247, 201, 92, 0.3));
+    --holo-opacity: 0.88;
+  }
+  .prism-card.r-secret.is-alt {
+    --card-bg: linear-gradient(155deg, #26101e 0%, #090910 48%, #132528 100%);
+    --card-border: rgba(255, 128, 196, 0.95);
+    --rarity-accent: #ff7cc8;
+  }
+
+  /* Card Top Header — ALWAYS ABOVE HOLO */
+  .card-series-bar {
+    position: relative;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px 6px;
+    background: linear-gradient(180deg, rgba(6, 9, 18, 0.88) 0%, rgba(6, 9, 18, 0.54) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(235, 242, 255, 0.9);
+  }
+
+  .card-series-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-alt-chip {
+    flex-shrink: 0;
+    margin-left: 4px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 7px;
+    font-weight: 700;
+    color: #14091c;
+    background: linear-gradient(90deg, #ff9be0, #ffd86b, #6ef2ff);
+  }
+
+  /* Card Artwork Viewport */
+  .card-art-frame {
+    position: relative;
+    flex: 1;
+    margin: 7px 8px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: #070b15;
+    z-index: 2;
+  }
+
+  .card-art-frame svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* HOLOGRAPHIC FOIL LAYER — STRICTLY MASKED TO AVOID TEXT REGIONS */
+  .card-holo-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    opacity: var(--holo-opacity, 0.5);
+    /* Mask dims holo strictly to 0% over top header (0-12%) and bottom text plate (72%-100%) */
+    -webkit-mask-image: linear-gradient(180deg,
+      rgba(0,0,0,0.06) 0%,
+      rgba(0,0,0,0.06) 11%,
+      rgba(0,0,0,1) 17%,
+      rgba(0,0,0,1) 68%,
+      rgba(0,0,0,0.05) 75%,
+      rgba(0,0,0,0.04) 100%);
+    mask-image: linear-gradient(180deg,
+      rgba(0,0,0,0.06) 0%,
+      rgba(0,0,0,0.06) 11%,
+      rgba(0,0,0,1) 17%,
+      rgba(0,0,0,1) 68%,
+      rgba(0,0,0,0.05) 75%,
+      rgba(0,0,0,0.04) 100%);
+  }
+
+  .card-holo-rainbow {
+    position: absolute;
+    inset: -35%;
+    background: linear-gradient(
+      var(--holo-angle, 128deg),
+      transparent 14%,
+      rgba(86, 232, 255, 0.36) 28%,
+      rgba(176, 134, 255, 0.44) 40%,
+      rgba(255, 138, 214, 0.46) 50%,
+      rgba(255, 224, 118, 0.4) 60%,
+      rgba(104, 246, 212, 0.34) 70%,
+      transparent 84%
+    );
+    transform: translate(var(--holo-x, 0%), var(--holo-y, 0%));
+    mix-blend-mode: color-dodge;
+  }
+
+  .card-holo-lattice {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.08) 0px,
+        rgba(255, 255, 255, 0.08) 1px,
+        transparent 1px,
+        transparent 7px
+      ),
+      radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 40%),
+        rgba(255, 255, 255, 0.48) 0%,
+        rgba(196, 228, 255, 0.16) 26%,
+        transparent 58%);
+    mix-blend-mode: overlay;
+  }
+
+  /* Card Bottom Info Plate — ALWAYS ABOVE HOLO & HIGH CONTRAST */
+  .card-info-plate {
+    position: relative;
+    z-index: 6;
+    padding: 7px 10px 9px;
+    background: linear-gradient(180deg, rgba(7, 10, 20, 0.84) 0%, rgba(6, 8, 16, 0.96) 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .card-name-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .card-name-group {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .card-name-en {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .card-name-zh {
+    font-size: 10.5px;
+    font-weight: 500;
+    color: rgba(220, 228, 248, 0.84);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-serial {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    color: rgba(188, 202, 232, 0.72);
+    flex-shrink: 0;
+  }
+
+  .card-rarity-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 7px;
+    border-radius: 5px;
+    background: var(--rarity-pill-bg, rgba(255, 255, 255, 0.1));
+    border: 1px solid color-mix(in srgb, var(--rarity-accent, #ffffff) 44%, transparent);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--rarity-accent, #ffffff);
+  }
+
+  .card-rarity-stars {
+    letter-spacing: 0.06em;
+    font-size: 9px;
+  }
+
+  /* NEW badge on newly discovered cards */
+  .new-badge {
+    position: absolute;
+    top: -8px;
+    right: -6px;
+    z-index: 12;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #0b0e18;
+    background: linear-gradient(135deg, #74f6ff, #ffe07d);
+    box-shadow: 0 4px 14px rgba(116, 246, 255, 0.55);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.35s ease 0.25s, transform 0.45s cubic-bezier(0.22, 1.4, 0.36, 1) 0.25s;
+  }
+
+  .card-slot.flipped .new-badge.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* =========================================================
+     HIGH-RARITY FULL-SCREEN DISCOVERY BANNER
+     ========================================================= */
+  .rarity-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+
+  .rarity-banner.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .rarity-banner-strip {
+    position: relative;
+    width: 100%;
+    padding: 28px 24px;
+    text-align: center;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(10, 12, 24, 0.86) 18%,
+      rgba(16, 18, 36, 0.94) 50%,
+      rgba(10, 12, 24, 0.86) 82%,
+      transparent 100%);
+    border-top: 1px solid rgba(255, 255, 255, 0.32);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transform: scaleY(0.75);
+    transition: transform 0.45s cubic-bezier(0.22, 1.18, 0.36, 1);
+    overflow: hidden;
+  }
+
+  .rarity-banner.active .rarity-banner-strip {
+    transform: scaleY(1);
+  }
+
+  .rarity-banner-strip::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+    transform: translateX(-100%);
+  }
+
+  .rarity-banner.active .rarity-banner-strip::before {
+    animation: bannerSweep 1.3s ease-out forwards;
+  }
+
+  @keyframes bannerSweep {
+    to { transform: translateX(100%); }
+  }
+
+  .banner-kicker {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.38em;
+    padding-left: 0.38em;
+    margin-bottom: 8px;
+  }
+
+  .banner-title {
+    font-size: clamp(22px, 3.8vw, 34px);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #ffffff;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  .rarity-banner.tier-ultra .banner-kicker {
+    color: #ffd86b;
+  }
+  .rarity-banner.tier-ultra .rarity-banner-strip {
+    border-color: rgba(255, 216, 107, 0.65);
+    box-shadow: 0 0 60px rgba(255, 190, 66, 0.28);
+  }
+
+  .rarity-banner.tier-secret .banner-kicker {
+    background: linear-gradient(90deg, #6ef2ff, #ff99e8, #ffe07d, #8fffe0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .rarity-banner.tier-secret .rarity-banner-strip {
+    border-color: rgba(255, 168, 240, 0.78);
+    box-shadow: 0 0 80px rgba(212, 134, 255, 0.38);
+  }
+
+  /* =========================================================
+     3D HOLOGRAPHIC INSPECTION MODAL
+     ========================================================= */
+  .inspect-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: var(--modal-backdrop);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+    padding: 20px;
+  }
+
+  .inspect-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .inspect-stage {
+    perspective: 1200px;
+    touch-action: none;
+  }
+
+  .inspect-card-wrap {
+    width: min(336px, 80vw);
+    height: min(484px, 68vh);
+    aspect-ratio: 196 / 282;
+    transform-style: preserve-3d;
+    will-change: transform;
+    border-radius: 18px;
+    box-shadow:
+      0 34px 80px rgba(0, 0, 0, 0.62),
+      0 0 40px rgba(138, 176, 255, 0.16);
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Enlarged typography & crisp spacing in 3D Inspect mode */
+  .inspect-card-wrap .prism-card {
+    border-radius: 18px;
+    border-width: 2px;
+  }
+  .inspect-card-wrap .card-series-bar {
+    padding: 12px 15px 9px;
+    font-size: 10.5px;
+  }
+  .inspect-card-wrap .card-art-frame {
+    margin: 10px 12px;
+    border-radius: 11px;
+  }
+  .inspect-card-wrap .card-info-plate {
+    padding: 11px 15px 14px;
+    gap: 8px;
+  }
+  .inspect-card-wrap .card-name-en {
+    font-size: 20px;
+  }
+  .inspect-card-wrap .card-name-zh {
+    font-size: 14.5px;
+  }
+  .inspect-card-wrap .card-serial {
+    font-size: 11px;
+  }
+  .inspect-card-wrap .card-rarity-bar {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  .inspect-card-wrap .card-rarity-stars {
+    font-size: 12px;
+  }
+
+  /* Even stronger optical reflection & text-safe mask during inspection */
+  .inspect-card-wrap .card-holo-layer {
+    opacity: calc(var(--holo-opacity, 0.55) + 0.18);
+  }
+
+  .inspect-meta-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .inspect-hint {
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* =========================================================
+     MODALS: COLLECTION CODEX & ODDS DISCLOSURE
+     ========================================================= */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--modal-backdrop);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-panel {
+    width: min(860px, 94vw);
+    max-height: 86vh;
+    background: var(--modal-panel);
+    border: 1px solid var(--glass-border-strong);
+    border-radius: 22px;
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateY(16px) scale(0.97);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .modal-overlay.open .modal-panel {
+    transform: translateY(0) scale(1);
+  }
+
+  .modal-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .modal-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .modal-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+
+  .modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-body {
+    padding: 20px 22px 24px;
+    overflow-y: auto;
+  }
+
+  .danger-btn {
+    border-color: rgba(255, 114, 134, 0.35);
+    color: #ff8e9e;
+  }
+  body.theme-daylight .danger-btn {
+    color: #c83349;
+    border-color: rgba(200, 51, 73, 0.32);
+  }
+  .danger-btn.confirming {
+    background: rgba(226, 54, 78, 0.85);
+    color: #ffffff;
+    border-color: rgba(255, 128, 146, 0.9);
+  }
+
+  /* Codex Grid */
+  .codex-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .codex-cell {
+    position: relative;
+    aspect-ratio: 196 / 282;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+  }
+
+  .codex-cell.unlocked {
+    cursor: pointer;
+  }
+
+  .codex-cell.unlocked:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.42);
+  }
+
+  .codex-cell .card-series-bar { padding: 5px 7px 4px; font-size: 6.2px; }
+  .codex-cell .card-art-frame { margin: 5px 6px; border-radius: 6px; }
+  .codex-cell .card-info-plate { padding: 5px 7px 6px; gap: 3px; }
+  .codex-cell .card-name-en { font-size: 10.5px; }
+  .codex-cell .card-name-zh { font-size: 8.5px; }
+  .codex-cell .card-serial { font-size: 7px; }
+  .codex-cell .card-rarity-bar { padding: 2px 5px; font-size: 7px; }
+
+  .codex-locked {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: linear-gradient(160deg, rgba(16, 20, 34, 0.88), rgba(9, 12, 22, 0.94));
+    border: 1px dashed var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-muted);
+    padding: 12px;
+    text-align: center;
+  }
+
+  body.theme-daylight .codex-locked {
+    background: linear-gradient(160deg, rgba(226, 231, 244, 0.85), rgba(212, 219, 236, 0.92));
+  }
+
+  .codex-silhouette {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 72%);
+    border: 1px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.55;
+  }
+
+  .codex-locked-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+
+  .codex-locked-stars {
+    font-size: 9px;
+    opacity: 0.5;
+    letter-spacing: 0.1em;
+  }
+
+  .codex-owned-tag {
+    position: absolute;
+    top: 24px;
+    right: 6px;
+    z-index: 8;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    background: rgba(8, 12, 24, 0.78);
+    border: 1px solid rgba(255,255,255,0.24);
+    color: #ffffff;
+  }
+
+  /* Odds Table */
+  .odds-panel {
+    width: min(560px, 94vw);
+  }
+
+  .odds-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .odds-table th, .odds-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .odds-table th {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .odds-rate {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-align: right !important;
+  }
+
+  .odds-note-box {
+    padding: 13px 15px;
+    border-radius: 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  .odds-note-box strong {
+    color: var(--text-primary);
+  }
+
+  /* =========================================================
+     RESPONSIVE LAYOUT (TABLET & MOBILE)
+     ========================================================= */
+  @media (max-width: 1060px) {
+    :root {
+      --card-w: 162px;
+      --card-h: 234px;
+    }
+    .cards-fan { gap: 10px; }
+  }
+
+  @media (max-width: 860px) {
+    .top-bar {
+      height: auto;
+      padding: 12px 14px 8px;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
+      row-gap: 8px;
+    }
+    .brand-wordmark {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+    .top-left {
+      grid-column: 1;
+      grid-row: 2;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .top-right {
+      grid-column: 2;
+      grid-row: 2;
+      gap: 6px;
+    }
+    .glass-btn {
+      height: 32px;
+      padding: 0 10px;
+      font-size: 11px;
+    }
+    .cards-fan {
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: 560px;
+    }
+    :root {
+      --card-w: 132px;
+      --card-h: 190px;
+      --pack-w: 244px;
+      --pack-h: 372px;
+    }
+    .pack-content { padding: 56px 14px 24px; }
+    .pack-logo { font-size: 22px; }
+    .pack-mascot-wrap { width: 118px; height: 118px; }
+    .pack-mascot-svg { width: 96px; height: 96px; }
+    .card-name-en { font-size: 11px; }
+    .card-name-zh { font-size: 9px; }
+    .card-rarity-bar { font-size: 7px; padding: 2px 5px; }
+    .codex-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .bottom-hud {
+      padding: 0 14px 14px;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+    }
+    .bottom-center {
+      align-items: flex-end;
+    }
+  }
+
+  @media (max-width: 520px) {
+    :root {
+      --card-w: 104px;
+      --card-h: 152px;
+      --pack-w: 224px;
+      --pack-h: 344px;
+    }
+    .codex-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .card-series-bar { font-size: 6px; padding: 4px 6px 3px; }
+    .card-art-frame { margin: 4px 5px; }
+    .card-info-plate { padding: 4px 6px 6px; gap: 2px; }
+    .card-name-en { font-size: 9.5px; }
+    .card-name-zh { display: none; }
+    .card-serial { font-size: 6.5px; }
+    .stage-hint { font-size: 11px; padding: 6px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage-root" id="stage-root">
+  <!-- Volumetric Light Curtains -->
+  <div class="light-curtains" aria-hidden="true">
+    <div class="beam"></div>
+    <div class="beam"></div>
+    <div class="beam"></div>
+    <div class="beam"></div>
+    <div class="beam"></div>
+    <div class="beam"></div>
+    <div class="beam"></div>
+  </div>
+  <div class="stage-overhead" aria-hidden="true"></div>
+  <div class="stage-floor" aria-hidden="true"></div>
+
+  <!-- Full-stage Particle & Light-Pillar Canvas -->
+  <canvas id="fx-canvas" aria-hidden="true"></canvas>
+
+  <!-- Top Navigation Chrome -->
+  <header class="top-bar">
+    <div class="top-left">
+      <button class="glass-btn" id="btn-odds" type="button" title="查看卡池概率与保底规则">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><circle cx="12" cy="7" r="0.8" fill="currentColor"/></svg>
+        <span>概率公示</span>
+      </button>
+      <button class="glass-btn" id="btn-godpack" type="button" title="装填后下一包必为欧皇全闪包">
+        <span class="god-dot" aria-hidden="true"></span>
+        <span id="godpack-label">全闪测试：欧皇待命</span>
+      </button>
+    </div>
+
+    <div class="brand-wordmark">
+      <div class="brand-title">PRISM</div>
+      <div class="brand-sub">OPTICAL ARCHIVE · S01</div>
+    </div>
+
+    <div class="top-right">
+      <button class="glass-btn" id="btn-theme" type="button" title="切换暗房舞台 / 白昼展台">
+        <svg id="icon-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="theme-label">白昼展台</span>
+      </button>
+      <button class="glass-btn" id="btn-sound" type="button" title="声音开关">
+        <svg id="icon-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        <span id="sound-label">音效开</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Stage -->
+  <main class="center-stage">
+    <!-- Sealed Metallic Booster Pack -->
+    <section class="pack-scene" id="pack-scene" aria-label="PRISM 全息卡包">
+      <div class="guarantee-badge">
+        <span class="spark">✦</span>
+        <span>高罕保底 · HOLO+ GUARANTEED</span>
+      </div>
+
+      <div class="pack-stage-wrap" id="pack-stage-wrap">
+        <div class="pack-aura" id="pack-aura"></div>
+
+        <div class="pack-body-tilt" id="pack-body-tilt">
+          <div class="pack-foil" id="pack-foil">
+            <div class="pack-holo-sheen" id="pack-holo-sheen"></div>
+            <div class="pack-specular"></div>
+
+            <div class="pack-content">
+              <div class="pack-head">
+                <div class="pack-logo">PRISM</div>
+                <div class="pack-edition">GOD PACK OMNI</div>
+                <div class="pack-series">SERIES 01 // ARCHIVE</div>
+              </div>
+
+              <div class="pack-mascot-wrap">
+                <div class="pack-mascot-ring"></div>
+                <!-- Original SVG Cute White Four-Pointed Star Mascot -->
+                <svg class="pack-mascot-svg" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <defs>
+                    <radialGradient id="mascotBody" cx="42%" cy="32%" r="68%">
+                      <stop offset="0%" stop-color="#ffffff"/>
+                      <stop offset="68%" stop-color="#f3f5ff"/>
+                      <stop offset="100%" stop-color="#d8daf6"/>
+                    </radialGradient>
+                    <radialGradient id="mascotHalo" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="rgba(255,255,255,0.85)"/>
+                      <stop offset="60%" stop-color="rgba(204,220,255,0.22)"/>
+                      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+                    </radialGradient>
+                  </defs>
+                  <circle cx="70" cy="70" r="62" fill="url(#mascotHalo)"/>
+                  <!-- Orbit sparkles -->
+                  <path d="M24 34 L26 28 L28 34 L34 36 L28 38 L26 44 L24 38 L18 36 Z" fill="#ffffff" opacity="0.9"/>
+                  <path d="M114 98 L115.6 93 L117.2 98 L122 99.6 L117.2 101.2 L115.6 106 L114 101.2 L109 99.6 Z" fill="#fff3c4" opacity="0.92"/>
+                  <circle cx="114" cy="34" r="3" fill="#b7f4ff" opacity="0.9"/>
+                  <circle cx="28" cy="102" r="2.5" fill="#ffc4ea" opacity="0.9"/>
+                  <!-- Chubby rounded four-pointed star body -->
+                  <path d="M70 15 C76 15, 81 42, 92 52 C102 62, 125 64, 125 70 C125 76, 102 78, 92 88 C81 98, 76 125, 70 125 C64 125, 59 98, 48 88 C38 78, 15 76, 15 70 C15 64, 38 62, 48 52 C59 42, 64 15, 70 15 Z"
+                        fill="url(#mascotBody)" stroke="rgba(255,255,255,0.95)" stroke-width="2" stroke-linejoin="round"/>
+                  <!-- Soft glossy highlight on upper petal -->
+                  <ellipse cx="64" cy="42" rx="6" ry="11" fill="#ffffff" opacity="0.72" transform="rotate(-10 64 42)"/>
+                  <!-- Kawaii eyes -->
+                  <ellipse cx="58.5" cy="67" rx="4.2" ry="5" fill="#251d3f"/>
+                  <ellipse cx="81.5" cy="67" rx="4.2" ry="5" fill="#251d3f"/>
+                  <circle cx="57" cy="65" r="1.6" fill="#ffffff"/>
+                  <circle cx="80" cy="65" r="1.6" fill="#ffffff"/>
+                  <!-- Rosy cheeks -->
+                  <ellipse cx="49" cy="73.5" rx="5.2" ry="3" fill="#ff9ed2" opacity="0.58"/>
+                  <ellipse cx="91" cy="73.5" rx="5.2" ry="3" fill="#ff9ed2" opacity="0.58"/>
+                  <!-- Happy curved smile -->
+                  <path d="M63.5 74.5 Q70 81.5 76.5 74.5" fill="none" stroke="#251d3f" stroke-width="2.6" stroke-linecap="round"/>
+                </svg>
+              </div>
+
+              <div class="pack-foot">
+                <div class="pack-cards-count">5 FOIL CARDS</div>
+                <div class="pack-meta-line">METALLIZED EDITION · HOLO GUARANTEED</div>
+              </div>
+            </div>
+
+            <div class="pack-crimp-bottom"></div>
+          </div>
+
+          <!-- 96-Segment Serrated Foil Tear Canvas -->
+          <canvas id="tear-canvas"></canvas>
+          <!-- Interactive SEAL Tear Drag Zone -->
+          <div class="tear-hit-zone" id="tear-hit-zone" role="slider" aria-label="按住顶部 SEAL 条横向拖动撕开卡包" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        </div>
+
+        <div class="pack-reflection" id="pack-reflection"></div>
+      </div>
+    </section>
+
+    <!-- 5 Ejected Cards Stage -->
+    <section class="cards-stage" id="cards-stage" aria-label="抽卡结果">
+      <div class="cards-fan" id="cards-fan"></div>
+    </section>
+  </main>
+
+  <!-- Bottom HUD -->
+  <footer class="bottom-hud">
+    <div class="bottom-left">
+      <button class="glass-btn codex-btn" id="btn-codex" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>典藏册</span>
+        <span class="codex-count" id="codex-count">0/12</span>
+      </button>
+    </div>
+
+    <div class="bottom-center">
+      <div class="action-row hidden" id="action-row">
+        <button class="glass-btn" id="btn-flip-all" type="button">一键翻开</button>
+        <button class="glass-btn primary-btn" id="btn-next-pack" type="button">再来一包</button>
+      </div>
+      <div class="stage-hint" id="stage-hint">左右晃动卡包验包 · 按住顶部 SEAL 条横向撕开</div>
+    </div>
+
+    <div></div>
+  </footer>
+
+  <!-- Full-Screen High-Rarity Banner -->
+  <div class="rarity-banner" id="rarity-banner" aria-live="polite">
+    <div class="rarity-banner-strip">
+      <div class="banner-kicker" id="banner-kicker">SECRET RARE DISCOVERED</div>
+      <div class="banner-title" id="banner-title">秘藏幻彩出货 · Astral（逆闪异画）</div>
+    </div>
+  </div>
+
+  <!-- 3D Holographic Inspection Overlay -->
+  <div class="inspect-overlay" id="inspect-overlay" role="dialog" aria-modal="true" aria-label="3D 全息检视">
+    <div class="inspect-stage" id="inspect-stage">
+      <div class="inspect-card-wrap" id="inspect-card-wrap"></div>
+    </div>
+    <div class="inspect-meta-bar">
+      <button class="glass-btn" id="btn-inspect-alt" type="button" style="display:none;">切换逆闪异画</button>
+      <div class="inspect-hint">移动指针体验 3D 全息折射 · 点击任意处关闭</div>
+    </div>
+  </div>
+
+  <!-- Collection Codex Modal -->
+  <div class="modal-overlay" id="codex-modal" role="dialog" aria-modal="true" aria-label="典藏册图鉴">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">典藏册 · ARCHIVE CODEX</div>
+          <div class="modal-sub" id="codex-sub">已收录 0 / 12 · 点击已收集卡牌进入 3D 全息检视</div>
+        </div>
+        <div class="modal-actions">
+          <button class="glass-btn danger-btn" id="btn-reset-codex" type="button">重置典藏</button>
+          <button class="glass-btn" id="btn-close-codex" type="button">关闭</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="codex-grid" id="codex-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Probability Disclosure Modal -->
+  <div class="modal-overlay" id="odds-modal" role="dialog" aria-modal="true" aria-label="概率公示">
+    <div class="modal-panel odds-panel">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-title">概率公示 · DROP RATES</div>
+          <div class="modal-sub">SERIES 01 // ARCHIVE · 5 FOIL CARDS PER PACK</div>
+        </div>
+        <div class="modal-actions">
+          <button class="glass-btn" id="btn-close-odds" type="button">关闭</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <table class="odds-table">
+          <thead>
+            <tr>
+              <th>稀有度档位</th>
+              <th>包含卡牌</th>
+              <th class="odds-rate">单卡概率</th>
+            </tr>
+          </thead>
+          <tbody id="odds-tbody"></tbody>
+        </table>
+        <div class="odds-note-box">
+          <strong>高罕保底机制：</strong>每包共 5 张卡，至少保底获得 <strong>1 张 HOLO RARE 及以上</strong>卡牌（若前 4 张均未命中 HOLO+，第 5 张将按 HOLO / ULTRA / SECRET 权重 75% / 20% / 5% 必出高罕）。<br/><br/>
+          <strong>秘藏逆闪异画：</strong>抽中 SECRET RARE（NO.012 Astral 秘星圣物）时，有 <strong>10%</strong> 概率升级为「逆闪异画」反转配色珍藏版（综合单卡概率 0.1%）。<br/><br/>
+          <strong>全闪测试模式：</strong>开启顶部「全闪测试：欧皇已装填」后，当前未开卡包 / 下一包将必定升级为「欧皇全闪包」——全部 5 张均为 HOLO RARE 及以上，且必含至少 1 张 ULTRA 或 SECRET RARE，开包后自动卸下。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================================
+     1. PRISM_CONFIG — CENTRAL CARD POOL & PROBABILITY CONFIGURATION
+        (Edit this object to add, replace, or rebalance cards!)
+     ========================================================================= */
+  const PRISM_CONFIG = {
+    packSize: 5,
+    storageKey: "prism_archive_collection_v1",
+    tearSegments: 96,
+    tearCompleteThreshold: 0.88,
+
+    rarities: {
+      COMMON: {
+        key: "COMMON",
+        label: "COMMON",
+        stars: "★",
+        rank: 1,
+        rate: 0.50,
+        cssClass: "r-common",
+        color: "#9bb4d4",
+        auraClass: "aura-common",
+        auraName: "平平无奇气息"
+      },
+      RARE: {
+        key: "RARE",
+        label: "RARE",
+        stars: "★★",
+        rank: 2,
+        rate: 0.30,
+        cssClass: "r-rare",
+        color: "#5fe3c4",
+        auraClass: "aura-common",
+        auraName: "平平无奇气息"
+      },
+      HOLO: {
+        key: "HOLO",
+        label: "HOLO RARE",
+        stars: "★★★",
+        rank: 3,
+        rate: 0.15,
+        cssClass: "r-holo",
+        color: "#84e3ff",
+        auraClass: "aura-holo",
+        auraName: "全息流光气息"
+      },
+      ULTRA: {
+        key: "ULTRA",
+        label: "ULTRA RARE",
+        stars: "★★★★",
+        rank: 4,
+        rate: 0.04,
+        cssClass: "r-ultra",
+        color: "#ffd970",
+        auraClass: "aura-ultra",
+        auraName: "欧皇气息",
+        bannerKicker: "ULTRA RARE DISCOVERED",
+        bannerPrefix: "超凡虹光出货"
+      },
+      SECRET: {
+        key: "SECRET",
+        label: "SECRET RARE",
+        stars: "★★★★★",
+        rank: 5,
+        rate: 0.01,
+        altRateWithinSecret: 0.10,
+        cssClass: "r-secret",
+        color: "#ff9ef5",
+        auraClass: "aura-secret",
+        auraName: "欧皇全闪气息",
+        bannerKicker: "SECRET RARE DISCOVERED",
+        bannerPrefix: "秘藏幻彩出货"
+      }
+    },
+
+    cards: [
+      { id: "NO.001", num: 1,  en: "Stardust", zh: "星尘",     series: "COSMOS",                  rarity: "COMMON", artType: "stardust" },
+      { id: "NO.002", num: 2,  en: "Comet",    zh: "彗星",     series: "COSMOS",                  rarity: "COMMON", artType: "comet" },
+      { id: "NO.003", num: 3,  en: "Meteor",   zh: "流星",     series: "COSMOS",                  rarity: "COMMON", artType: "meteor" },
+      { id: "NO.004", num: 4,  en: "Eclipse",  zh: "日蚀",     series: "COSMOS",                  rarity: "RARE",   artType: "eclipse" },
+      { id: "NO.005", num: 5,  en: "Aurora",   zh: "极光",     series: "NEBULA",                  rarity: "RARE",   artType: "aurora" },
+      { id: "NO.006", num: 6,  en: "Quasar",   zh: "类星体",   series: "COSMOS",                  rarity: "HOLO",   artType: "quasar" },
+      { id: "NO.007", num: 7,  en: "Pulsar",   zh: "脉冲星",   series: "COSMOS",                  rarity: "HOLO",   artType: "pulsar" },
+      { id: "NO.008", num: 8,  en: "Orbit",    zh: "星环轨迹", series: "COSMOS · Celestial Ring", rarity: "HOLO",   artType: "orbit" },
+      { id: "NO.009", num: 9,  en: "Vortex",   zh: "星云漩涡", series: "NEBULA · Event Horizon",  rarity: "HOLO",   artType: "vortex" },
+      { id: "NO.010", num: 10, en: "Prismix",  zh: "原初棱镜", series: "ORIGIN · Genesis Spectrum", rarity: "ULTRA", artType: "prismix" },
+      { id: "NO.011", num: 11, en: "Helios",   zh: "阳光日冕", series: "SOLAR · Sovereign Corona", rarity: "ULTRA",  artType: "helios" },
+      { id: "NO.012", num: 12, en: "Astral",   zh: "秘星圣物", series: "RELIC · Eternal Relic",   rarity: "SECRET", artType: "astral", hasAlt: true }
+    ]
+  };
+
+  // Expose config on window for easy inspection / customization testing
+  window.PRISM_CONFIG = PRISM_CONFIG;
+
+  /* =========================================================================
+     2. PROCEDURAL SVG ARTWORK GENERATOR (ZERO EXTERNAL ASSETS)
+     ========================================================================= */
+  let svgUidCounter = 0;
+
+  function renderCardArtSVG(card, isAlt = false) {
+    const u = `a${++svgUidCounter}_`;
+    const type = card.artType;
+
+    // Shared fine starfield helper
+    const stars = (color = "#dce9ff", op = 0.7) => `
+      <g fill="${color}" opacity="${op}">
+        <circle cx="28" cy="30" r="1.1"/><circle cx="64" cy="22" r="0.8"/><circle cx="192" cy="34" r="1.2"/>
+        <circle cx="212" cy="76" r="0.9"/><circle cx="34" cy="182" r="1"/><circle cx="198" cy="204" r="1.2"/>
+        <circle cx="152" cy="46" r="0.7"/><circle cx="84" cy="224" r="0.9"/><circle cx="174" cy="166" r="0.8"/>
+        <circle cx="48" cy="112" r="0.8"/><circle cx="206" cy="138" r="1"/><circle cx="122" cy="24" r="0.9"/>
+      </g>`;
+
+    switch (type) {
+      case "stardust":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="46%" r="68%">
+              <stop offset="0%" stop-color="#22314a"/><stop offset="60%" stop-color="#111929"/><stop offset="100%" stop-color="#090d16"/>
+            </radialGradient>
+            <radialGradient id="${u}cl" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#b9d4f2" stop-opacity="0.78"/><stop offset="48%" stop-color="#6989b2" stop-opacity="0.28"/><stop offset="100%" stop-color="#293a56" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#b7cde8", 0.65)}
+          <circle cx="120" cy="128" r="76" fill="url(#${u}cl)"/>
+          <ellipse cx="102" cy="116" rx="56" ry="34" fill="url(#${u}cl)" transform="rotate(-24 102 116)"/>
+          <ellipse cx="142" cy="144" rx="48" ry="28" fill="url(#${u}cl)" transform="rotate(18 142 144)"/>
+          <circle cx="120" cy="128" r="62" fill="none" stroke="#8ea9cc" stroke-width="0.6" stroke-dasharray="3 5" opacity="0.45"/>
+          <g fill="#e8f3ff">
+            <circle cx="120" cy="126" r="3.4"/><circle cx="106" cy="114" r="2.2"/><circle cx="136" cy="122" r="2.5"/>
+            <circle cx="114" cy="144" r="2.1"/><circle cx="132" cy="140" r="1.8"/><circle cx="96" cy="134" r="1.9"/>
+            <circle cx="148" cy="116" r="1.5"/><circle cx="124" cy="104" r="1.7"/><circle cx="102" cy="100" r="1.3"/>
+            <circle cx="144" cy="154" r="1.6"/><circle cx="88" cy="120" r="1.4"/><circle cx="128" cy="158" r="1.4"/>
+          </g>
+          <path d="M120 108 L122 124 L138 126 L122 128 L120 144 L118 128 L102 126 L118 124 Z" fill="#ffffff" opacity="0.92"/>
+          <path d="M96 102 L97 108 L103 109 L97 110 L96 116 L95 110 L89 109 L95 108 Z" fill="#cfe4ff" opacity="0.8"/>
+          <path d="M148 136 L149 141 L154 142 L149 143 L148 148 L147 143 L142 142 L147 141 Z" fill="#cfe4ff" opacity="0.78"/>
+        </svg>`;
+
+      case "comet":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="${u}bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#19253a"/><stop offset="100%" stop-color="#090e18"/>
+            </linearGradient>
+            <linearGradient id="${u}tail" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#e8f4ff" stop-opacity="0.92"/>
+              <stop offset="32%" stop-color="#88afd8" stop-opacity="0.52"/>
+              <stop offset="100%" stop-color="#354b6e" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="${u}head" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="42%" stop-color="#b8d9f8" stop-opacity="0.85"/><stop offset="100%" stop-color="#5d84b0" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#b8cfe8", 0.65)}
+          <path d="M168 74 C122 108, 66 154, 16 218 L48 232 C98 174, 134 128, 174 84 Z" fill="url(#${u}tail)"/>
+          <path d="M166 72 C110 98, 52 132, 6 178 L20 192 C72 148, 122 114, 170 80 Z" fill="url(#${u}tail)" opacity="0.58"/>
+          <circle cx="170" cy="78" r="34" fill="url(#${u}head)"/>
+          <circle cx="170" cy="78" r="10.5" fill="#ffffff"/>
+          <path d="M170 52 L172.5 75.5 L196 78 L172.5 80.5 L170 104 L167.5 80.5 L144 78 L167.5 75.5 Z" fill="#ffffff" opacity="0.86"/>
+          <g fill="#d9ecff" opacity="0.82">
+            <circle cx="128" cy="118" r="2"/><circle cx="102" cy="144" r="1.6"/><circle cx="76" cy="164" r="1.4"/>
+            <circle cx="114" cy="108" r="1.3"/><circle cx="88" cy="130" r="1.1"/><circle cx="60" cy="186" r="1.3"/>
+          </g>
+        </svg>`;
+
+      case "meteor":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="${u}bg" x1="0" y1="0" x2="0.4" y2="1">
+              <stop offset="0%" stop-color="#1b263b"/><stop offset="65%" stop-color="#101827"/><stop offset="100%" stop-color="#080c14"/>
+            </linearGradient>
+            <linearGradient id="${u}beam" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c9cc4" stop-opacity="0"/>
+              <stop offset="65%" stop-color="#b4d2f4" stop-opacity="0.65"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#b4c9e4", 0.6)}
+          <path d="M22 44 L178 186" stroke="url(#${u}beam)" stroke-width="14" stroke-linecap="round" opacity="0.22"/>
+          <path d="M36 56 L180 188" stroke="url(#${u}beam)" stroke-width="5" stroke-linecap="round" opacity="0.72"/>
+          <path d="M58 76 L182 189" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          <!-- Companion faint meteors -->
+          <path d="M88 32 L166 104" stroke="url(#${u}beam)" stroke-width="2.2" stroke-linecap="round" opacity="0.52"/>
+          <path d="M18 118 L92 184" stroke="url(#${u}beam)" stroke-width="2" stroke-linecap="round" opacity="0.44"/>
+          <circle cx="182" cy="189" r="18" fill="#a8ccf6" opacity="0.28"/>
+          <circle cx="182" cy="189" r="6" fill="#ffffff"/>
+          <path d="M182 169 L184 187 L202 189 L184 191 L182 209 L180 191 L162 189 L180 187 Z" fill="#ffffff" opacity="0.9"/>
+          <g fill="#cfe3fc" opacity="0.78">
+            <circle cx="144" cy="158" r="1.8"/><circle cx="158" cy="160" r="1.4"/><circle cx="132" cy="138" r="1.4"/>
+          </g>
+        </svg>`;
+
+      case "eclipse":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="48%" r="70%">
+              <stop offset="0%" stop-color="#2a2013"/><stop offset="52%" stop-color="#121119"/><stop offset="100%" stop-color="#07070c"/>
+            </radialGradient>
+            <radialGradient id="${u}cor" cx="50%" cy="50%" r="50%">
+              <stop offset="56%" stop-color="#ffdd7a" stop-opacity="0.95"/>
+              <stop offset="68%" stop-color="#f59e2d" stop-opacity="0.62"/>
+              <stop offset="86%" stop-color="#c46b18" stop-opacity="0.16"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="${u}ring" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fff4c4"/><stop offset="50%" stop-color="#f7be46"/><stop offset="100%" stop-color="#d47d1e"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#f8e1b4", 0.52)}
+          <circle cx="120" cy="128" r="96" fill="url(#${u}cor)"/>
+          <circle cx="120" cy="128" r="78" fill="none" stroke="url(#${u}ring)" stroke-width="0.7" opacity="0.45" stroke-dasharray="4 6"/>
+          <!-- Golden eclipse ring -->
+          <circle cx="120" cy="128" r="52" fill="none" stroke="url(#${u}ring)" stroke-width="4.5"/>
+          <circle cx="120" cy="128" r="49" fill="#07070b"/>
+          <!-- Diamond ring flare -->
+          <circle cx="157" cy="92" r="14" fill="#ffe99c" opacity="0.45"/>
+          <circle cx="157" cy="92" r="5" fill="#ffffff"/>
+          <path d="M157 62 L159 89.5 L186 92 L159 94.5 L157 122 L155 94.5 L128 92 L155 89.5 Z" fill="#fff7da" opacity="0.95"/>
+          <path d="M36 128 L70 128 M170 128 L204 128" stroke="#f7be46" stroke-width="0.9" opacity="0.45"/>
+        </svg>`;
+
+      case "aurora":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="${u}bg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#0b1526"/><stop offset="65%" stop-color="#0f1e2e"/><stop offset="100%" stop-color="#070c16"/>
+            </linearGradient>
+            <linearGradient id="${u}aur1" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#22f2b8" stop-opacity="0.92"/>
+              <stop offset="48%" stop-color="#38d8e8" stop-opacity="0.64"/>
+              <stop offset="82%" stop-color="#9b6dff" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#d074ff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="${u}aur2" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#64ffce" stop-opacity="0.8"/>
+              <stop offset="55%" stop-color="#a864ff" stop-opacity="0.52"/>
+              <stop offset="100%" stop-color="#ec76d8" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#d4fff2", 0.65)}
+          <!-- Sweeping aurora ribbons -->
+          <path d="M-10 170 C42 126, 86 184, 134 120 C172 70, 212 114, 250 86 L250 18 C206 46, 166 10, 126 54 C78 106, 36 62, -10 104 Z" fill="url(#${u}aur1)" opacity="0.88"/>
+          <path d="M-10 198 C50 156, 108 198, 162 142 C194 108, 224 134, 250 120 L250 64 C216 84, 184 54, 148 92 C98 144, 46 106, -10 148 Z" fill="url(#${u}aur2)" opacity="0.72"/>
+          <!-- Vertical shimmer curtains -->
+          <g stroke="#8fffdf" stroke-width="1" opacity="0.28">
+            <line x1="48" y1="84" x2="48" y2="162"/><line x1="82" y1="98" x2="82" y2="178"/>
+            <line x1="124" y1="54" x2="124" y2="152"/><line x1="164" y1="68" x2="164" y2="146"/>
+            <line x1="196" y1="48" x2="196" y2="128"/>
+          </g>
+          <!-- Arctic silhouette & water mirror -->
+          <path d="M0 218 L48 196 L92 214 L148 188 L194 210 L240 194 L240 260 L0 260 Z" fill="#060a14"/>
+          <path d="M0 226 Q120 218 240 226 L240 260 L0 260 Z" fill="#0e2230" opacity="0.52"/>
+          <ellipse cx="122" cy="238" rx="76" ry="9" fill="#46f2c8" opacity="0.16"/>
+        </svg>`;
+
+      case "quasar":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="50%" r="72%">
+              <stop offset="0%" stop-color="#361456"/><stop offset="52%" stop-color="#170c2e"/><stop offset="100%" stop-color="#080612"/>
+            </radialGradient>
+            <linearGradient id="${u}jet" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff7ee2" stop-opacity="0"/>
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="0.96"/>
+              <stop offset="100%" stop-color="#a274ff" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="${u}core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="32%" stop-color="#ffa4f2" stop-opacity="0.92"/><stop offset="68%" stop-color="#9e5cff" stop-opacity="0.45"/><stop offset="100%" stop-color="#5822b8" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#f0c8ff", 0.72)}
+          <!-- Twin relativistic plasma jets -->
+          <polygon points="116,128 124,128 192,10 156,6" fill="url(#${u}jet)" opacity="0.72"/>
+          <polygon points="116,132 124,132 84,254 48,250" fill="url(#${u}jet)" opacity="0.72"/>
+          <line x1="68" y1="248" x2="174" y2="12" stroke="#ffffff" stroke-width="2.6" opacity="0.88"/>
+          <!-- Accretion disc -->
+          <ellipse cx="120" cy="130" rx="84" ry="22" fill="none" stroke="#ff7ee2" stroke-width="5" opacity="0.42" transform="rotate(24 120 130)"/>
+          <ellipse cx="120" cy="130" rx="70" ry="16" fill="none" stroke="#c89eff" stroke-width="2.5" opacity="0.88" transform="rotate(24 120 130)"/>
+          <ellipse cx="120" cy="130" rx="50" ry="11" fill="none" stroke="#ffffff" stroke-width="1.4" opacity="0.92" transform="rotate(24 120 130)"/>
+          <circle cx="120" cy="130" r="46" fill="url(#${u}core)"/>
+          <circle cx="120" cy="130" r="13" fill="#ffffff"/>
+          <path d="M120 88 L123 127 L162 130 L123 133 L120 172 L117 133 L78 130 L117 127 Z" fill="#ffffff" opacity="0.94"/>
+        </svg>`;
+
+      case "pulsar":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="50%" r="72%">
+              <stop offset="0%" stop-color="#0f3454"/><stop offset="56%" stop-color="#091a30"/><stop offset="100%" stop-color="#050b16"/>
+            </radialGradient>
+            <linearGradient id="${u}b1" x1="0.5" y1="0.5" x2="0" y2="0">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+              <stop offset="45%" stop-color="#48e8ff" stop-opacity="0.65"/>
+              <stop offset="100%" stop-color="#2880ff" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="${u}b2" x1="0.5" y1="0.5" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+              <stop offset="45%" stop-color="#48e8ff" stop-opacity="0.65"/>
+              <stop offset="100%" stop-color="#2880ff" stop-opacity="0"/>
+            </linearGradient>
+            <radialGradient id="${u}core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="36%" stop-color="#68f2ff" stop-opacity="0.9"/><stop offset="100%" stop-color="#1a78ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#b4f2ff", 0.72)}
+          <!-- Magnetic field pulse loops -->
+          <ellipse cx="120" cy="130" rx="88" ry="52" fill="none" stroke="#48e8ff" stroke-width="1" opacity="0.34" transform="rotate(-38 120 130)"/>
+          <ellipse cx="120" cy="130" rx="64" ry="38" fill="none" stroke="#76f4ff" stroke-width="1.2" opacity="0.55" transform="rotate(-38 120 130)"/>
+          <circle cx="120" cy="130" r="82" fill="none" stroke="#36b6ff" stroke-width="0.8" stroke-dasharray="5 6" opacity="0.38"/>
+          <!-- Twin lighthouse beams -->
+          <polygon points="120,130 6,34 42,6" fill="url(#${u}b1)" opacity="0.82"/>
+          <polygon points="120,130 234,226 198,254" fill="url(#${u}b2)" opacity="0.82"/>
+          <line x1="22" y1="20" x2="218" y2="240" stroke="#e4fdff" stroke-width="2.4" opacity="0.92"/>
+          <circle cx="120" cy="130" r="44" fill="url(#${u}core)"/>
+          <circle cx="120" cy="130" r="14" fill="#ffffff"/>
+          <circle cx="120" cy="130" r="24" fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.65"/>
+        </svg>`;
+
+      case "orbit":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="46%" r="72%">
+              <stop offset="0%" stop-color="#132d5e"/><stop offset="58%" stop-color="#0b1633"/><stop offset="100%" stop-color="#060a18"/>
+            </radialGradient>
+            <radialGradient id="${u}pl" cx="34%" cy="30%" r="68%">
+              <stop offset="0%" stop-color="#b8f0ff"/><stop offset="40%" stop-color="#3c8eff"/><stop offset="78%" stop-color="#1a3a8a"/><stop offset="100%" stop-color="#0a163d"/>
+            </radialGradient>
+            <linearGradient id="${u}rg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#84ecff"/><stop offset="50%" stop-color="#e8f6ff"/><stop offset="100%" stop-color="#5a88ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#cce8ff", 0.72)}
+          <!-- Back half of planetary rings -->
+          <g transform="rotate(-22 120 130)">
+            <path d="M 22 130 A 98 26 0 0 1 218 130" fill="none" stroke="url(#${u}rg)" stroke-width="8" opacity="0.34"/>
+            <path d="M 38 130 A 82 20 0 0 1 202 130" fill="none" stroke="#b4f2ff" stroke-width="2" opacity="0.58"/>
+          </g>
+          <!-- Planet sphere -->
+          <circle cx="120" cy="130" r="46" fill="url(#${u}pl)"/>
+          <circle cx="120" cy="130" r="46" fill="none" stroke="rgba(180,240,255,0.65)" stroke-width="1.2"/>
+          <!-- Specular atmospheric crescent -->
+          <path d="M84 106 A44 44 0 0 1 146 92 A38 38 0 0 0 84 106 Z" fill="#ffffff" opacity="0.32"/>
+          <!-- Front half of planetary rings -->
+          <g transform="rotate(-22 120 130)">
+            <path d="M 22 130 A 98 26 0 0 0 218 130" fill="none" stroke="url(#${u}rg)" stroke-width="9" opacity="0.72"/>
+            <path d="M 36 130 A 84 21 0 0 0 204 130" fill="none" stroke="#ffffff" stroke-width="1.8" opacity="0.9"/>
+            <path d="M 10 130 A 110 31 0 0 0 230 130" fill="none" stroke="#62b6ff" stroke-width="1" stroke-dasharray="6 5" opacity="0.6"/>
+          </g>
+          <!-- Orbiting moons -->
+          <circle cx="192" cy="86" r="5.5" fill="#d8f6ff"/>
+          <circle cx="52" cy="178" r="3.8" fill="#82c4ff"/>
+        </svg>`;
+
+      case "vortex":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="50%" r="74%">
+              <stop offset="0%" stop-color="#3c1550"/><stop offset="56%" stop-color="#1a0d2e"/><stop offset="100%" stop-color="#080612"/>
+            </radialGradient>
+            <radialGradient id="${u}orb" cx="42%" cy="38%" r="62%">
+              <stop offset="0%" stop-color="#ffe6fb"/><stop offset="35%" stop-color="#f272d8"/><stop offset="72%" stop-color="#8438d6"/><stop offset="100%" stop-color="#1c0836"/>
+            </radialGradient>
+            <linearGradient id="${u}sw" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff9ce6"/><stop offset="50%" stop-color="#b478ff"/><stop offset="100%" stop-color="#6ce8ff"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#f8ccff", 0.72)}
+          <!-- Spiral nebula arms -->
+          <g fill="none" stroke="url(#${u}sw)" stroke-linecap="round">
+            <path d="M120 130 C142 96, 190 102, 198 142 C206 184, 154 220, 98 206 C42 192, 22 128, 52 78 C78 36, 146 28, 192 64" stroke-width="5" opacity="0.48"/>
+            <path d="M120 130 C98 164, 50 158, 42 118 C34 76, 86 40, 142 54 C198 68, 218 132, 188 182 C162 224, 94 232, 48 196" stroke-width="3.6" opacity="0.62"/>
+            <path d="M120 130 C152 118, 174 148, 152 174 C126 202, 74 186, 68 142 C62 96, 114 68, 158 92" stroke-width="2" opacity="0.86"/>
+          </g>
+          <circle cx="120" cy="130" r="36" fill="url(#${u}orb)"/>
+          <circle cx="120" cy="130" r="14" fill="#18072c"/>
+          <circle cx="120" cy="130" r="15.5" fill="none" stroke="#ffcaf4" stroke-width="2"/>
+          <circle cx="120" cy="130" r="46" fill="none" stroke="#ff9ee6" stroke-width="1" stroke-dasharray="3 6" opacity="0.72"/>
+        </svg>`;
+
+      case "prismix":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="50%" r="72%">
+              <stop offset="0%" stop-color="#193b78"/><stop offset="52%" stop-color="#0c1b42"/><stop offset="100%" stop-color="#060918"/>
+            </radialGradient>
+            <radialGradient id="${u}glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/><stop offset="34%" stop-color="#8ee6ff" stop-opacity="0.82"/><stop offset="72%" stop-color="#3a7cff" stop-opacity="0.28"/><stop offset="100%" stop-color="#163088" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="${u}ray" x1="0.5" y1="0.5" x2="0.5" y2="0">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+              <stop offset="48%" stop-color="#60c8ff" stop-opacity="0.62"/>
+              <stop offset="100%" stop-color="#366eff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#d2ecff", 0.75)}
+          <!-- Blue radial genesis rays -->
+          <g transform="translate(120,130)" opacity="0.88">
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(45)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(90)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(135)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(180)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(225)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(270)"/>
+            <polygon points="0,0 -10,-126 10,-126" fill="url(#${u}ray)" transform="rotate(315)"/>
+          </g>
+          <circle cx="120" cy="130" r="82" fill="url(#${u}glow)"/>
+          <circle cx="120" cy="130" r="76" fill="none" stroke="#88dcff" stroke-width="1" opacity="0.62"/>
+          <circle cx="120" cy="130" r="58" fill="none" stroke="#ffffff" stroke-width="0.9" stroke-dasharray="4 5" opacity="0.62"/>
+          <!-- Pure white four-pointed prism star -->
+          <path d="M120 46 C126 96, 144 114, 194 130 C144 146, 126 164, 120 214 C114 164, 96 146, 46 130 C96 114, 114 96, 120 46 Z"
+                fill="#ffffff" stroke="#b6ecff" stroke-width="2"/>
+          <path d="M120 76 C123 108, 134 119, 166 130 C134 141, 123 152, 120 184 C117 152, 106 141, 74 130 C106 119, 117 108, 120 76 Z"
+                fill="#d4f4ff" opacity="0.6"/>
+          <circle cx="120" cy="130" r="10" fill="#ffffff"/>
+        </svg>`;
+
+      case "helios":
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="48%" r="74%">
+              <stop offset="0%" stop-color="#4e2e0b"/><stop offset="52%" stop-color="#22140a"/><stop offset="100%" stop-color="#0c0806"/>
+            </radialGradient>
+            <radialGradient id="${u}sun" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fffef0"/><stop offset="38%" stop-color="#ffe175"/><stop offset="72%" stop-color="#f59e24" stop-opacity="0.72"/><stop offset="100%" stop-color="#d46810" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="${u}gold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#fff8cc"/><stop offset="50%" stop-color="#f7c443"/><stop offset="100%" stop-color="#d97a16"/>
+            </linearGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars("#ffe4a0", 0.65)}
+          <circle cx="120" cy="130" r="98" fill="url(#${u}sun)" opacity="0.72"/>
+          <!-- Sovereign Corona Rings -->
+          <circle cx="120" cy="130" r="82" fill="none" stroke="url(#${u}gold)" stroke-width="1.2" opacity="0.6"/>
+          <circle cx="120" cy="130" r="68" fill="none" stroke="#ffdf7e" stroke-width="2.2" stroke-dasharray="10 6" opacity="0.75"/>
+          <!-- Golden 8-point sovereign sun star -->
+          <g transform="translate(120,130)">
+            <path d="M0 -84 L12 -22 L58 -58 L22 -12 L84 0 L22 12 L58 58 L12 22 L0 84 L-12 22 L-58 58 L-22 12 L-84 0 L-22 -12 L-58 -58 L-12 -22 Z"
+                  fill="url(#${u}gold)" stroke="#fff7d2" stroke-width="1.5" stroke-linejoin="round"/>
+            <circle cx="0" cy="0" r="24" fill="#fffdf2"/>
+            <circle cx="0" cy="0" r="32" fill="none" stroke="#fff3be" stroke-width="1.4" opacity="0.8"/>
+          </g>
+        </svg>`;
+
+      case "astral": {
+        // Standard Secret Rare vs Inverted Reverse-Holo Alt-Art!
+        const bg0 = isAlt ? "#280a26" : "#18245c";
+        const bg1 = isAlt ? "#120616" : "#0b1433";
+        const bg2 = isAlt ? "#071217" : "#060816";
+        const dTop = isAlt ? "#26122e" : "#e8fbff";
+        const dMid = isAlt ? "#ff68c4" : "#56d6ff";
+        const dBot = isAlt ? "#ffb84d" : "#2e5eff";
+        const dStroke = isAlt ? "#ffe07d" : "#ffffff";
+        const r1 = isAlt ? "#ff4eb8" : "#56f0ff";
+        const r2 = isAlt ? "#ffd24d" : "#c678ff";
+        const r3 = isAlt ? "#42f5d4" : "#ff7ee0";
+        const r4 = isAlt ? "#a668ff" : "#ffe066";
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="${u}bg" cx="50%" cy="50%" r="74%">
+              <stop offset="0%" stop-color="${bg0}"/><stop offset="56%" stop-color="${bg1}"/><stop offset="100%" stop-color="${bg2}"/>
+            </radialGradient>
+            <linearGradient id="${u}halo" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${r1}"/><stop offset="33%" stop-color="${r2}"/><stop offset="66%" stop-color="${r3}"/><stop offset="100%" stop-color="${r4}"/>
+            </linearGradient>
+            <linearGradient id="${u}dia1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="${dTop}"/><stop offset="50%" stop-color="${dMid}"/><stop offset="100%" stop-color="${dBot}"/>
+            </linearGradient>
+            <radialGradient id="${u}core" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="${isAlt ? '#ff9ee8' : '#ffffff'}" stop-opacity="0.9"/>
+              <stop offset="48%" stop-color="${r1}" stop-opacity="0.38"/>
+              <stop offset="100%" stop-color="${r2}" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="240" height="260" fill="url(#${u}bg)"/>
+          ${stars(isAlt ? "#ffd2f4" : "#dff6ff", 0.82)}
+          <!-- Full-spectrum rainbow prism rays -->
+          <g transform="translate(120,130)" opacity="0.72">
+            <polygon points="0,0 -11,-128 11,-128" fill="${r1}" opacity="0.55"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r2}" opacity="0.55" transform="rotate(45)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r3}" opacity="0.55" transform="rotate(90)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r4}" opacity="0.55" transform="rotate(135)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r1}" opacity="0.55" transform="rotate(180)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r2}" opacity="0.55" transform="rotate(225)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r3}" opacity="0.55" transform="rotate(270)"/>
+            <polygon points="0,0 -11,-128 11,-128" fill="${r4}" opacity="0.55" transform="rotate(315)"/>
+          </g>
+          <circle cx="120" cy="130" r="90" fill="url(#${u}core)"/>
+          <!-- Intersecting sacred halos -->
+          <ellipse cx="120" cy="130" rx="86" ry="34" fill="none" stroke="url(#${u}halo)" stroke-width="2.2" transform="rotate(-28 120 130)"/>
+          <ellipse cx="120" cy="130" rx="86" ry="34" fill="none" stroke="url(#${u}halo)" stroke-width="2.2" transform="rotate(28 120 130)"/>
+          <circle cx="120" cy="130" r="68" fill="none" stroke="url(#${u}halo)" stroke-width="1.2" stroke-dasharray="5 5"/>
+          <!-- Faceted Eternal Diamond Relic -->
+          <g transform="translate(120,130)">
+            <polygon points="0,-64 46,0 0,64 -46,0" fill="url(#${u}dia1)" stroke="${dStroke}" stroke-width="2" stroke-linejoin="round"/>
+            <polygon points="0,-64 22,-8 0,64 -22,-8" fill="${isAlt ? 'rgba(255,224,125,0.28)' : 'rgba(255,255,255,0.34)'}"/>
+            <polygon points="0,-64 46,0 22,-8" fill="${isAlt ? 'rgba(255,104,196,0.42)' : 'rgba(180,248,255,0.45)'}"/>
+            <polygon points="0,-64 -46,0 -22,-8" fill="${isAlt ? 'rgba(66,245,212,0.34)' : 'rgba(255,255,255,0.52)'}"/>
+            <line x1="-46" y1="0" x2="46" y2="0" stroke="${dStroke}" stroke-width="1" opacity="0.72"/>
+            <line x1="0" y1="-64" x2="0" y2="64" stroke="${dStroke}" stroke-width="1" opacity="0.62"/>
+            <path d="M0 -24 L3 -3 L24 0 L3 3 L0 24 L-3 3 L-24 0 L-3 -3 Z" fill="#ffffff" opacity="0.95"/>
+          </g>
+        </svg>`;
+      }
+      default:
+        return `<svg viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg"><rect width="240" height="260" fill="#10182b"/></svg>`;
+    }
+  }
+
+  function renderCardBackSVG() {
+    const u = `bk${++svgUidCounter}_`;
+    return `<svg viewBox="0 0 140 140" width="112" height="112" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <radialGradient id="${u}orb" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="28%" stop-color="#6eeeff" stop-opacity="0.88"/>
+          <stop offset="65%" stop-color="#9e6eff" stop-opacity="0.34"/>
+          <stop offset="100%" stop-color="#0b1533" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="${u}ring" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#58ecff"/><stop offset="100%" stop-color="#f484cc"/>
+        </linearGradient>
+      </defs>
+      <circle cx="70" cy="70" r="56" fill="url(#${u}orb)"/>
+      <circle cx="70" cy="70" r="50" fill="none" stroke="url(#${u}ring)" stroke-width="1.2" opacity="0.78"/>
+      <circle cx="70" cy="70" r="38" fill="none" stroke="url(#${u}ring)" stroke-width="0.9" stroke-dasharray="3 4" opacity="0.72"/>
+      <path d="M70 28 C73 56, 84 67, 112 70 C84 73, 73 84, 70 112 C67 84, 56 73, 28 70 C56 67, 67 56, 70 28 Z"
+            fill="#ffffff" stroke="#a6f4ff" stroke-width="1"/>
+      <circle cx="70" cy="70" r="6" fill="#ffffff"/>
+    </svg>`;
+  }
+
+  function buildCardMarkup(card, isAlt = false) {
+    const rar = PRISM_CONFIG.rarities[card.rarity];
+    const totalStr = String(PRISM_CONFIG.cards.length).padStart(3, "0");
+    const altChip = isAlt ? `<span class="card-alt-chip">逆闪异画</span>` : "";
+    const zhLabel = isAlt ? `${card.zh}·逆闪` : card.zh;
+    return `
+      <div class="prism-card ${rar.cssClass} ${isAlt ? "is-alt" : ""}">
+        <div class="card-series-bar">
+          <span class="card-series-text">${card.series}</span>
+          ${altChip}
+        </div>
+        <div class="card-art-frame">
+          ${renderCardArtSVG(card, isAlt)}
+        </div>
+        <div class="card-holo-layer">
+          <div class="card-holo-rainbow"></div>
+          <div class="card-holo-lattice"></div>
+        </div>
+        <div class="card-info-plate">
+          <div class="card-name-row">
+            <div class="card-name-group">
+              <span class="card-name-en">${card.en}</span>
+              <span class="card-name-zh">${zhLabel}</span>
+            </div>
+            <span class="card-serial">${card.id}/${totalStr}</span>
+          </div>
+          <div class="card-rarity-bar">
+            <span>${rar.label}</span>
+            <span class="card-rarity-stars">${rar.stars}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* =========================================================================
+     3. PROCEDURAL WEB AUDIO ENGINE (ZERO AUDIO FILES)
+     ========================================================================= */
+  class AudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.noiseBuffer = null;
+      this.enabled = true;
+      this.unlocked = false;
+      this.lastTearSoundTime = 0;
+    }
+
+    unlock() {
+      if (!this.enabled) return;
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        this.ctx = new AC();
+        this._buildNoiseBuffer();
+      }
+      if (this.ctx.state === "suspended") {
+        this.ctx.resume().catch(() => {});
+      }
+      this.unlocked = true;
+    }
+
+    _buildNoiseBuffer() {
+      const sr = this.ctx.sampleRate;
+      const buf = this.ctx.createBuffer(1, sr * 1.2, sr);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      this.noiseBuffer = buf;
+    }
+
+    _ready() {
+      return this.enabled && this.unlocked && this.ctx && this.ctx.state === "running";
+    }
+
+    playClick() {
+      if (!this._ready()) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(1320, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.032);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.036);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    }
+
+    playShakeTick(intensity = 0.5) {
+      if (!this._ready() || !this.noiseBuffer) return;
+      const now = this.ctx.currentTime;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(2200 + intensity * 1800, now);
+      filter.Q.value = 2.4;
+      const gain = this.ctx.createGain();
+      const vol = Math.min(0.08, 0.03 + intensity * 0.045);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      src.connect(filter).connect(gain).connect(this.ctx.destination);
+      src.start(now, Math.random() * 0.6, 0.05);
+    }
+
+    playSenseAura(rank) {
+      if (!this._ready()) return;
+      const now = this.ctx.currentTime;
+      const chords = {
+        1: [440, 554.37],
+        2: [440, 554.37],
+        3: [523.25, 659.25, 783.99, 987.77],
+        4: [587.33, 739.99, 880, 1174.66],
+        5: [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98]
+      };
+      const notes = chords[rank] || chords[3];
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        const t = now + idx * 0.05;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(0.06, t + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0008, t + 0.45);
+        osc.connect(gain).connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.48);
+      });
+    }
+
+    playTearTick(progress) {
+      if (!this._ready() || !this.noiseBuffer) return;
+      const nowMs = performance.now();
+      if (nowMs - this.lastTearSoundTime < 26) return;
+      this.lastTearSoundTime = nowMs;
+
+      const now = this.ctx.currentTime;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = "bandpass";
+      hp.frequency.setValueAtTime(2800 + progress * 2400 + Math.random() * 700, now);
+      hp.Q.value = 1.6;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.036);
+      src.connect(hp).connect(gain).connect(this.ctx.destination);
+      src.start(now, Math.random() * 0.8, 0.04);
+    }
+
+    playSnapBack() {
+      if (!this._ready() || !this.noiseBuffer) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(340, now);
+      osc.frequency.exponentialRampToValueAtTime(160, now + 0.14);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.17);
+    }
+
+    playTearBurst() {
+      if (!this._ready() || !this.noiseBuffer) return;
+      const now = this.ctx.currentTime;
+
+      // 1. Crisp wide foil rip
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = "highpass";
+      bp.frequency.setValueAtTime(1600, now);
+      bp.frequency.exponentialRampToValueAtTime(4800, now + 0.18);
+      const nGain = this.ctx.createGain();
+      nGain.gain.setValueAtTime(0.28, now);
+      nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      src.connect(bp).connect(nGain).connect(this.ctx.destination);
+      src.start(now, 0, 0.26);
+
+      // 2. Clean sub impact
+      const sub = this.ctx.createOscillator();
+      const sGain = this.ctx.createGain();
+      sub.type = "sine";
+      sub.frequency.setValueAtTime(150, now);
+      sub.frequency.exponentialRampToValueAtTime(42, now + 0.28);
+      sGain.gain.setValueAtTime(0.22, now);
+      sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      sub.connect(sGain).connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.32);
+
+      // 3. Prismatic glass burst sparkle
+      [880, 1174.66, 1567.98, 2093].forEach((f, i) => {
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = "triangle";
+        const t = now + i * 0.035;
+        osc.frequency.setValueAtTime(f, t);
+        g.gain.setValueAtTime(0.055, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+        osc.connect(g).connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.45);
+      });
+    }
+
+    playFlip() {
+      if (!this._ready() || !this.noiseBuffer) return;
+      const now = this.ctx.currentTime;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(900, now);
+      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.09);
+      filter.Q.value = 1.4;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.14, now + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      src.connect(filter).connect(gain).connect(this.ctx.destination);
+      src.start(now, Math.random() * 0.5, 0.15);
+    }
+
+    playRaritySting(rarityKey, isAlt = false) {
+      if (!this._ready()) return;
+      const now = this.ctx.currentTime;
+
+      let notes;
+      let step = 0.06;
+      let dur = 0.32;
+      let wave = "sine";
+
+      if (rarityKey === "COMMON") {
+        notes = [523.25, 659.25];
+        dur = 0.22;
+      } else if (rarityKey === "RARE") {
+        notes = [523.25, 659.25, 783.99];
+        dur = 0.28;
+      } else if (rarityKey === "HOLO") {
+        notes = [523.25, 659.25, 783.99, 987.77, 1174.66];
+        step = 0.055;
+        dur = 0.42;
+        wave = "triangle";
+      } else if (rarityKey === "ULTRA") {
+        notes = [587.33, 739.99, 880, 1174.66, 1479.98, 1760];
+        step = 0.055;
+        dur = 0.62;
+        wave = "triangle";
+      } else {
+        // SECRET / Reverse-Holo lush celestial arpeggio
+        notes = isAlt
+          ? [523.25, 659.25, 783.99, 987.77, 1318.5, 1567.98, 1975.53, 2093]
+          : [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093];
+        step = 0.052;
+        dur = 0.85;
+        wave = "triangle";
+      }
+
+      notes.forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = wave;
+        const t = now + 0.06 + i * step;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.001, t);
+        gain.gain.linearRampToValueAtTime(rarityKey === "SECRET" || rarityKey === "ULTRA" ? 0.095 : 0.065, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+        osc.connect(gain).connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.04);
+      });
+    }
+  }
+
+  const audio = new AudioEngine();
+
+  /* =========================================================================
+     4. PARTICLE & RAINBOW LIGHT PILLAR FX CANVAS (DPR <= 2, RESTRAINED)
+     ========================================================================= */
+  class StageFX {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext("2d");
+      this.particles = [];
+      this.motes = [];
+      this.pillars = [];
+      this.w = 0;
+      this.h = 0;
+      this.dpr = 1;
+      this.resize();
+      this._initMotes();
+      window.addEventListener("resize", () => this.resize());
+      this._loop = this._loop.bind(this);
+      requestAnimationFrame(this._loop);
+    }
+
+    resize() {
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.w = window.innerWidth;
+      this.h = window.innerHeight;
+      this.canvas.width = Math.floor(this.w * this.dpr);
+      this.canvas.height = Math.floor(this.h * this.dpr);
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    }
+
+    _initMotes() {
+      this.motes = [];
+      for (let i = 0; i < 18; i++) {
+        this.motes.push({
+          x: Math.random() * this.w,
+          y: Math.random() * this.h,
+          r: 0.9 + Math.random() * 1.6,
+          vy: -0.12 - Math.random() * 0.24,
+          vx: (Math.random() - 0.5) * 0.16,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+
+    emitTearSparks(x, y, color = "#ffffff", count = 5) {
+      for (let i = 0; i < count; i++) {
+        if (this.particles.length > 130) break;
+        const angle = -Math.PI * 0.85 + Math.random() * Math.PI * 1.2;
+        const speed = 1.6 + Math.random() * 4.2;
+        this.particles.push({
+          kind: "spark",
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.2,
+          g: 0.14,
+          size: 1.5 + Math.random() * 2.4,
+          color: i % 2 === 0 ? "#ffffff" : color,
+          alpha: 1,
+          life: 0,
+          maxLife: 24 + Math.random() * 18
+        });
+      }
+    }
+
+    triggerRainbowBurst(cx, cy) {
+      this.pillars.push({
+        x: cx,
+        y: cy,
+        life: 0,
+        maxLife: 56
+      });
+
+      const palette = ["#ffffff", "#6ef2ff", "#c48aff", "#ff84d8", "#ffe074", "#74ffcf"];
+      const count = 64;
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 2.8 + Math.random() * 9.5;
+        this.particles.push({
+          kind: i % 3 === 0 ? "diamond" : "shard",
+          x: cx + (Math.random() - 0.5) * 80,
+          y: cy + (Math.random() - 0.5) * 16,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 3.6,
+          g: 0.16,
+          size: 3 + Math.random() * 5.5,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.24,
+          color: palette[i % palette.length],
+          alpha: 1,
+          life: 0,
+          maxLife: 48 + Math.random() * 34
+        });
+      }
+    }
+
+    triggerCelebrationConfetti(isSecret = false) {
+      const palette = isSecret
+        ? ["#6ef2ff", "#ff84df", "#ffe072", "#b882ff", "#76ffd0", "#ffffff"]
+        : ["#ffe072", "#ffae42", "#ffffff", "#88dcff"];
+      const count = 48;
+      for (let i = 0; i < count; i++) {
+        const fromLeft = i % 2 === 0;
+        this.particles.push({
+          kind: "ribbon",
+          x: fromLeft ? this.w * (0.12 + Math.random() * 0.25) : this.w * (0.63 + Math.random() * 0.25),
+          y: this.h * (0.36 + Math.random() * 0.16),
+          vx: (fromLeft ? 1 : -1) * (1.8 + Math.random() * 4.8) + (Math.random() - 0.5) * 2,
+          vy: -4.2 - Math.random() * 5.4,
+          g: 0.11,
+          size: 5 + Math.random() * 6,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.2,
+          color: palette[i % palette.length],
+          alpha: 1,
+          life: 0,
+          maxLife: 76 + Math.random() * 42
+        });
+      }
+    }
+
+    _loop() {
+      const ctx = this.ctx;
+      ctx.clearRect(0, 0, this.w, this.h);
+
+      const isDay = document.body.classList.contains("theme-daylight");
+
+      // Subtle floating dust motes
+      for (const m of this.motes) {
+        m.x += m.vx;
+        m.y += m.vy;
+        m.phase += 0.02;
+        if (m.y < -10) { m.y = this.h + 10; m.x = Math.random() * this.w; }
+        if (m.x < -10) m.x = this.w + 10;
+        if (m.x > this.w + 10) m.x = -10;
+        const a = (0.12 + 0.14 * Math.sin(m.phase)) * (isDay ? 0.55 : 1);
+        ctx.fillStyle = isDay ? `rgba(110, 130, 190, ${a})` : `rgba(210, 228, 255, ${a})`;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Rainbow light pillars
+      for (let i = this.pillars.length - 1; i >= 0; i--) {
+        const p = this.pillars[i];
+        p.life++;
+        const t = p.life / p.maxLife;
+        if (t >= 1) {
+          this.pillars.splice(i, 1);
+          continue;
+        }
+        const env = t < 0.18 ? t / 0.18 : Math.pow(1 - (t - 0.18) / 0.82, 1.5);
+        const colW = (110 + t * 230);
+
+        ctx.save();
+        ctx.globalCompositeOperation = isDay ? "source-over" : "lighter";
+        ctx.globalAlpha = env * (isDay ? 0.72 : 0.92);
+
+        // Tall rainbow spectrum column
+        const grad = ctx.createLinearGradient(p.x - colW * 0.5, 0, p.x + colW * 0.5, 0);
+        grad.addColorStop(0.0, "rgba(86, 228, 255, 0)");
+        grad.addColorStop(0.22, "rgba(86, 228, 255, 0.58)");
+        grad.addColorStop(0.38, "rgba(182, 134, 255, 0.72)");
+        grad.addColorStop(0.5, "rgba(255, 255, 255, 0.95)");
+        grad.addColorStop(0.62, "rgba(255, 136, 214, 0.72)");
+        grad.addColorStop(0.78, "rgba(255, 218, 108, 0.55)");
+        grad.addColorStop(1.0, "rgba(255, 218, 108, 0)");
+
+        const vGrad = ctx.createLinearGradient(0, 0, 0, p.y + 120);
+        vGrad.addColorStop(0, "rgba(255,255,255,0.08)");
+        vGrad.addColorStop(0.55, "rgba(255,255,255,0.9)");
+        vGrad.addColorStop(0.85, "rgba(255,255,255,1)");
+        vGrad.addColorStop(1, "rgba(255,255,255,0)");
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(p.x - colW * 0.5, 0, colW, p.y + 110);
+
+        // Horizontal optical lens flare at pack mouth
+        const flareW = 280 + t * 380;
+        const fGrad = ctx.createLinearGradient(p.x - flareW * 0.5, p.y, p.x + flareW * 0.5, p.y);
+        fGrad.addColorStop(0, "rgba(255,255,255,0)");
+        fGrad.addColorStop(0.32, "rgba(120,236,255,0.65)");
+        fGrad.addColorStop(0.5, "rgba(255,255,255,0.98)");
+        fGrad.addColorStop(0.68, "rgba(255,156,226,0.65)");
+        fGrad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = fGrad;
+        ctx.fillRect(p.x - flareW * 0.5, p.y - 6, flareW, 12);
+
+        // Central radial flash
+        const rGrad = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, 160 + t * 120);
+        rGrad.addColorStop(0, "rgba(255,255,255,0.95)");
+        rGrad.addColorStop(0.35, "rgba(196,174,255,0.48)");
+        rGrad.addColorStop(1, "rgba(120,210,255,0)");
+        ctx.fillStyle = rGrad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 160 + t * 120, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // Active particles
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const pt = this.particles[i];
+        pt.life++;
+        if (pt.life >= pt.maxLife) {
+          this.particles.splice(i, 1);
+          continue;
+        }
+        pt.vx *= 0.985;
+        pt.vy += pt.g;
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        if (pt.rot !== undefined) pt.rot += pt.vrot;
+        const alpha = 1 - Math.pow(pt.life / pt.maxLife, 1.4);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(pt.x, pt.y);
+        if (pt.rot) ctx.rotate(pt.rot);
+        ctx.fillStyle = pt.color;
+
+        if (pt.kind === "spark") {
+          ctx.beginPath();
+          ctx.arc(0, 0, pt.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (pt.kind === "diamond") {
+          const s = pt.size;
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 1.4);
+          ctx.lineTo(s * 0.7, 0);
+          ctx.lineTo(0, s * 1.4);
+          ctx.lineTo(-s * 0.7, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else if (pt.kind === "ribbon") {
+          ctx.fillRect(-pt.size, -pt.size * 0.34, pt.size * 2, pt.size * 0.68);
+        } else {
+          ctx.fillRect(-pt.size * 0.6, -pt.size * 0.6, pt.size * 1.2, pt.size * 1.2);
+        }
+        ctx.restore();
+      }
+
+      requestAnimationFrame(this._loop);
+    }
+  }
+
+  /* =========================================================================
+     5. PACK GENERATOR & COLLECTION STORAGE
+     ========================================================================= */
+  const cardsByRarity = {};
+  for (const rKey of Object.keys(PRISM_CONFIG.rarities)) {
+    cardsByRarity[rKey] = PRISM_CONFIG.cards.filter(c => c.rarity === rKey);
+  }
+
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function rollSingleCard(forceHoloPlus = false) {
+    let rarityKey;
+    if (forceHoloPlus) {
+      // Proportional among HOLO (15) : ULTRA (4) : SECRET (1) => 75% / 20% / 5%
+      const r = Math.random();
+      if (r < 0.75) rarityKey = "HOLO";
+      else if (r < 0.95) rarityKey = "ULTRA";
+      else rarityKey = "SECRET";
+    } else {
+      const r = Math.random();
+      if (r < 0.50) rarityKey = "COMMON";
+      else if (r < 0.80) rarityKey = "RARE";
+      else if (r < 0.95) rarityKey = "HOLO";
+      else if (r < 0.99) rarityKey = "ULTRA";
+      else rarityKey = "SECRET";
+    }
+
+    const card = pickRandom(cardsByRarity[rarityKey]);
+    let isAlt = false;
+    if (card.hasAlt && rarityKey === "SECRET") {
+      isAlt = Math.random() < (PRISM_CONFIG.rarities.SECRET.altRateWithinSecret || 0.10);
+    }
+    return { card, isAlt };
+  }
+
+  function rollPack(isGodPack = false) {
+    const pulls = [];
+    if (isGodPack) {
+      // All 5 are HOLO+, guaranteed at least 1 SECRET or ULTRA
+      for (let i = 0; i < PRISM_CONFIG.packSize; i++) {
+        pulls.push(rollSingleCard(true));
+      }
+      const hasHigh = pulls.some(p => p.card.rarity === "ULTRA" || p.card.rarity === "SECRET");
+      if (!hasHigh) {
+        const makeSecret = Math.random() < 0.45;
+        const rKey = makeSecret ? "SECRET" : "ULTRA";
+        const card = pickRandom(cardsByRarity[rKey]);
+        const isAlt = makeSecret && card.hasAlt && Math.random() < 0.22;
+        pulls[PRISM_CONFIG.packSize - 1] = { card, isAlt };
+      }
+    } else {
+      for (let i = 0; i < PRISM_CONFIG.packSize; i++) {
+        pulls.push(rollSingleCard(false));
+      }
+      // Guarantee at least 1 HOLO+
+      const hasHoloPlus = pulls.some(p => PRISM_CONFIG.rarities[p.card.rarity].rank >= 3);
+      if (!hasHoloPlus) {
+        pulls[PRISM_CONFIG.packSize - 1] = rollSingleCard(true);
+      }
+    }
+
+    // Gentle suspense sort: keep common/rare earlier, put highest rarity in slots 2..4
+    pulls.sort((a, b) => PRISM_CONFIG.rarities[a.card.rarity].rank - PRISM_CONFIG.rarities[b.card.rarity].rank);
+    // Lightly shuffle first 3 and last 2 so order isn't completely predictable
+    if (Math.random() < 0.5) [pulls[0], pulls[1]] = [pulls[1], pulls[0]];
+    if (Math.random() < 0.5) [pulls[3], pulls[4]] = [pulls[4], pulls[3]];
+
+    // Determine max rarity in pack
+    let maxRarity = PRISM_CONFIG.rarities.COMMON;
+    for (const p of pulls) {
+      const r = PRISM_CONFIG.rarities[p.card.rarity];
+      if (r.rank > maxRarity.rank) maxRarity = r;
+    }
+
+    return { pulls, maxRarity, isGodPack };
+  }
+
+  function loadCollection() {
+    try {
+      const raw = localStorage.getItem(PRISM_CONFIG.storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") return parsed;
+      }
+    } catch (_) {}
+    return {}; // { "NO.001": { count: 1, alt: false } }
+  }
+
+  function saveCollection(col) {
+    try {
+      localStorage.setItem(PRISM_CONFIG.storageKey, JSON.stringify(col));
+    } catch (_) {}
+  }
+
+  /* =========================================================================
+     6. 96-SEGMENT SERRATED FOIL TEAR RENDERER
+     ========================================================================= */
+  class TearStripCanvas {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext("2d");
+      this.segments = PRISM_CONFIG.tearSegments;
+      this.progress = 0;      // 0..1
+      this.direction = 1;     // 1 = left->right, -1 = right->left
+      this.detached = false;
+      this.detachT = 0;       // 0..1 fly-off animation
+      this.auraColor = "#84e3ff";
+      this.isSecret = false;
+      this.teeth = [];
+      this._generateTeeth();
+      this.resize();
+      window.addEventListener("resize", () => this.resize());
+    }
+
+    _generateTeeth() {
+      this.teeth = [];
+      for (let i = 0; i <= this.segments; i++) {
+        // Deterministic serrated foil micro-teeth pattern
+        const saw = (i % 2 === 0 ? -1 : 1) * 2.1;
+        const jitter = Math.sin(i * 1.93) * 1.45 + Math.cos(i * 4.17) * 0.85;
+        this.teeth.push(saw + jitter);
+      }
+    }
+
+    resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rect = this.canvas.getBoundingClientRect();
+      this.w = rect.width || 436;
+      this.h = rect.height || 162;
+      this.canvas.width = Math.floor(this.w * dpr);
+      this.canvas.height = Math.floor(this.h * dpr);
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Pack metrics relative to canvas (canvas offset is top:-66, left:-34)
+      const packEl = document.getElementById("pack-foil");
+      this.packW = packEl ? packEl.offsetWidth : 288;
+      this.packX = 34;
+      this.stripTop = 66;
+      this.stripH = 44;
+      this.seamY = this.stripTop + this.stripH; // 110
+      this.draw();
+    }
+
+    reset(maxRarity) {
+      this.progress = 0;
+      this.direction = 1;
+      this.detached = false;
+      this.detachT = 0;
+      this.auraColor = maxRarity.color;
+      this.isSecret = maxRarity.key === "SECRET";
+      this._generateTeeth();
+      this.draw();
+    }
+
+    draw() {
+      const ctx = this.ctx;
+      ctx.clearRect(0, 0, this.w, this.h);
+
+      const x0 = this.packX;
+      const pw = this.packW;
+      const topY = this.stripTop;
+      const seamY = this.seamY;
+      const segW = pw / this.segments;
+      const tornSegs = Math.min(this.segments, Math.floor(this.progress * this.segments));
+
+      const seamPoint = (i) => {
+        const idx = this.direction === 1 ? i : this.segments - i;
+        return {
+          x: x0 + idx * segW,
+          y: seamY + this.teeth[idx]
+        };
+      };
+
+      // 1. Open Cavity + Internal Rarity Light Leak along torn segments (0..tornSegs)
+      if (tornSegs > 0) {
+        ctx.save();
+        const startPt = seamPoint(0);
+        const endPt = seamPoint(tornSegs);
+        const minX = Math.min(startPt.x, endPt.x);
+        const maxX = Math.max(startPt.x, endPt.x);
+
+        // Dark foil interior slit opening
+        ctx.beginPath();
+        ctx.moveTo(startPt.x, seamY - 1);
+        for (let i = 0; i <= tornSegs; i++) {
+          const p = seamPoint(i);
+          ctx.lineTo(p.x, p.y + 1.2);
+        }
+        ctx.lineTo(endPt.x, seamY - 5);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(12, 10, 26, 0.88)";
+        ctx.fill();
+
+        // Luminous light leaking from inside the pack
+        const glowIntensity = 0.32 + this.progress * 0.68;
+        const leakGrad = ctx.createLinearGradient(minX, seamY - 14, maxX, seamY + 8);
+        if (this.isSecret) {
+          leakGrad.addColorStop(0, `rgba(92, 240, 255, ${glowIntensity})`);
+          leakGrad.addColorStop(0.35, `rgba(255, 134, 224, ${glowIntensity})`);
+          leakGrad.addColorStop(0.7, `rgba(255, 226, 114, ${glowIntensity})`);
+          leakGrad.addColorStop(1, `rgba(255, 255, 255, ${glowIntensity})`);
+        } else {
+          leakGrad.addColorStop(0, this.auraColor);
+          leakGrad.addColorStop(0.55, "#ffffff");
+          leakGrad.addColorStop(1, this.auraColor);
+        }
+
+        ctx.shadowColor = this.isSecret ? "#ff88e8" : this.auraColor;
+        ctx.shadowBlur = 14 + this.progress * 18;
+        ctx.strokeStyle = leakGrad;
+        ctx.lineWidth = 2.5 + this.progress * 2.5;
+        ctx.beginPath();
+        for (let i = 0; i <= tornSegs; i++) {
+          const p = seamPoint(i);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+
+        // Jagged silver lower torn lip on the remaining pack body
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (let i = 0; i <= tornSegs; i++) {
+          const p = seamPoint(i);
+          if (i === 0) ctx.moveTo(p.x, p.y + 1.8);
+          else ctx.lineTo(p.x, p.y + 1.8);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 2. Intact Un-torn Portion of the Top SEAL Strip (tornSegs..segments)
+      if (!this.detached && tornSegs < this.segments) {
+        ctx.save();
+        const firstIntact = seamPoint(tornSegs);
+        const lastIntact = seamPoint(this.segments);
+        const leftX = Math.min(firstIntact.x, lastIntact.x);
+        const rightX = Math.max(firstIntact.x, lastIntact.x);
+
+        // Build clipping polygon for intact strip with serrated bottom edge
+        ctx.beginPath();
+        ctx.moveTo(firstIntact.x, topY);
+        ctx.lineTo(lastIntact.x, topY);
+        ctx.lineTo(lastIntact.x, lastIntact.y);
+        for (let i = this.segments; i >= tornSegs; i--) {
+          const p = seamPoint(i);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.clip();
+
+        // Metallic foil strip gradient
+        const stripGrad = ctx.createLinearGradient(x0, topY, x0 + pw, seamY);
+        stripGrad.addColorStop(0, "#eef1fa");
+        stripGrad.addColorStop(0.26, "#d0c4ef");
+        stripGrad.addColorStop(0.54, "#eac0e4");
+        stripGrad.addColorStop(0.78, "#d4e3f8");
+        stripGrad.addColorStop(1, "#c5b6ea");
+        ctx.fillStyle = stripGrad;
+        ctx.fillRect(x0, topY, pw, this.stripH + 8);
+
+        // Fine vertical heat-seal crimp grooves along upper band
+        ctx.fillStyle = "rgba(62, 46, 102, 0.14)";
+        for (let gx = x0; gx < x0 + pw; gx += 6) {
+          ctx.fillRect(gx, topY, 2.5, 13);
+        }
+
+        // Top gloss highlight
+        ctx.fillStyle = "rgba(255, 255, 255, 0.56)";
+        ctx.fillRect(x0, topY, pw, 2.5);
+
+        // Micro-perforation dashed tear guide right above the serrated seam
+        ctx.strokeStyle = "rgba(44, 30, 78, 0.34)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x0, seamY - 2);
+        ctx.lineTo(x0 + pw, seamY - 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Left & right V-notches for authentic booster pack tear start
+        ctx.fillStyle = "rgba(18, 14, 32, 0.65)";
+        ctx.beginPath();
+        ctx.moveTo(x0, seamY - 7);
+        ctx.lineTo(x0 + 7, seamY - 3);
+        ctx.lineTo(x0, seamY + 1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(x0 + pw, seamY - 7);
+        ctx.lineTo(x0 + pw - 7, seamY - 3);
+        ctx.lineTo(x0 + pw, seamY + 1);
+        ctx.closePath();
+        ctx.fill();
+
+        // "SEAL" typography & subtle directional arrows
+        ctx.fillStyle = "rgba(32, 22, 58, 0.84)";
+        ctx.font = "700 11px -apple-system, BlinkMacSystemFont, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("▸  S E A L   ·   拖 动 撕 开  ▸", x0 + pw * 0.5, topY + 26);
+
+        // Crisp border glint along intact tear front
+        ctx.strokeStyle = "rgba(255,255,255,0.6)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(leftX + 0.5, topY + 0.5, Math.max(0, rightX - leftX - 1), this.stripH - 1);
+
+        ctx.restore();
+      }
+
+      // 3. Peeling & Curling Torn Foil Flap (0..tornSegs)
+      if (tornSegs > 1) {
+        const activePt = seamPoint(tornSegs);
+        const tornLen = tornSegs * segW;
+        const dir = this.direction;
+
+        ctx.save();
+        if (this.detached) {
+          ctx.globalAlpha = Math.max(0, 1 - this.detachT * 1.15);
+          ctx.translate(dir * this.detachT * 95, -this.detachT * 62);
+          ctx.rotate(dir * this.detachT * 0.42);
+        }
+
+        // Cast shadow under the curled foil flap
+        ctx.save();
+        ctx.translate(activePt.x, activePt.y);
+        const curlAngle = dir * (-0.34 - this.progress * 0.42);
+        ctx.rotate(curlAngle);
+        ctx.fillStyle = "rgba(12, 8, 28, 0.28)";
+        ctx.beginPath();
+        ctx.ellipse(-dir * tornLen * 0.35, -8, tornLen * 0.48, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Draw segmented curled foil ribbon arching upward & forward from active tear point
+        const samples = Math.max(6, Math.min(32, Math.floor(tornSegs / 2)));
+        const topEdge = [];
+        const botEdge = [];
+
+        for (let s = 0; s <= samples; s++) {
+          const frac = s / samples; // 0 = at tear vertex, 1 = free torn tip
+          const dist = frac * tornLen;
+          // Curl parabola: lifts upward and curves smoothly outward
+          const bend = Math.min(1.3, frac * (0.65 + this.progress * 0.65));
+          const px = activePt.x + dir * (dist * Math.cos(bend * 0.72) - frac * frac * 18);
+          const lift = Math.sin(bend) * (24 + tornLen * 0.24) + frac * 14;
+          const pyBot = activePt.y - lift;
+          // Foil strip twists slightly as it peels
+          const thickness = this.stripH * (0.94 - frac * 0.14);
+          const toothIdx = Math.min(this.segments, Math.max(0, Math.round((this.direction === 1 ? tornSegs * (1 - frac) : this.segments - tornSegs * (1 - frac)))));
+          const toothOff = this.teeth[toothIdx] * 0.65;
+
+          botEdge.push({ x: px, y: pyBot + toothOff });
+          topEdge.push({ x: px - dir * lift * 0.18, y: pyBot - thickness });
+        }
+
+        // Fill underside metallic aluminized silver lining
+        ctx.beginPath();
+        ctx.moveTo(botEdge[0].x, botEdge[0].y);
+        for (let s = 1; s < botEdge.length; s++) ctx.lineTo(botEdge[s].x, botEdge[s].y);
+        for (let s = topEdge.length - 1; s >= 0; s--) ctx.lineTo(topEdge[s].x, topEdge[s].y);
+        ctx.closePath();
+
+        const curlGrad = ctx.createLinearGradient(
+          activePt.x, activePt.y,
+          botEdge[botEdge.length - 1].x, topEdge[topEdge.length - 1].y
+        );
+        curlGrad.addColorStop(0.0, "#8d98b0");
+        curlGrad.addColorStop(0.18, "#ffffff");
+        curlGrad.addColorStop(0.45, "#cfd6e8");
+        curlGrad.addColorStop(0.75, "#e8d6f4");
+        curlGrad.addColorStop(1.0, "#9fa9c2");
+
+        ctx.fillStyle = curlGrad;
+        ctx.fill();
+
+        // Crisp specular foil crease line right at the fold
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(botEdge[0].x, botEdge[0].y);
+        ctx.lineTo(topEdge[0].x, topEdge[0].y);
+        ctx.stroke();
+
+        // Metallic edge highlight along serrated peeled edge
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let s = 0; s < botEdge.length; s++) {
+          if (s === 0) ctx.moveTo(botEdge[s].x, botEdge[s].y);
+          else ctx.lineTo(botEdge[s].x, botEdge[s].y);
+        }
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+  }
+
+  /* =========================================================================
+     7. MAIN APPLICATION STATE & INTERACTION CONTROLLER
+     ========================================================================= */
+  const els = {
+    stageRoot: document.getElementById("stage-root"),
+    fxCanvas: document.getElementById("fx-canvas"),
+    btnOdds: document.getElementById("btn-odds"),
+    btnGodPack: document.getElementById("btn-godpack"),
+    godPackLabel: document.getElementById("godpack-label"),
+    btnTheme: document.getElementById("btn-theme"),
+    themeLabel: document.getElementById("theme-label"),
+    iconTheme: document.getElementById("icon-theme"),
+    btnSound: document.getElementById("btn-sound"),
+    soundLabel: document.getElementById("sound-label"),
+    iconSound: document.getElementById("icon-sound"),
+
+    packScene: document.getElementById("pack-scene"),
+    packStageWrap: document.getElementById("pack-stage-wrap"),
+    packAura: document.getElementById("pack-aura"),
+    packBodyTilt: document.getElementById("pack-body-tilt"),
+    packFoil: document.getElementById("pack-foil"),
+    packHoloSheen: document.getElementById("pack-holo-sheen"),
+    tearCanvas: document.getElementById("tear-canvas"),
+    tearHitZone: document.getElementById("tear-hit-zone"),
+
+    cardsStage: document.getElementById("cards-stage"),
+    cardsFan: document.getElementById("cards-fan"),
+
+    btnCodex: document.getElementById("btn-codex"),
+    codexCount: document.getElementById("codex-count"),
+    actionRow: document.getElementById("action-row"),
+    btnFlipAll: document.getElementById("btn-flip-all"),
+    btnNextPack: document.getElementById("btn-next-pack"),
+    stageHint: document.getElementById("stage-hint"),
+
+    rarityBanner: document.getElementById("rarity-banner"),
+    bannerKicker: document.getElementById("banner-kicker"),
+    bannerTitle: document.getElementById("banner-title"),
+
+    inspectOverlay: document.getElementById("inspect-overlay"),
+    inspectStage: document.getElementById("inspect-stage"),
+    inspectCardWrap: document.getElementById("inspect-card-wrap"),
+    btnInspectAlt: document.getElementById("btn-inspect-alt"),
+
+    codexModal: document.getElementById("codex-modal"),
+    codexGrid: document.getElementById("codex-grid"),
+    codexSub: document.getElementById("codex-sub"),
+    btnResetCodex: document.getElementById("btn-reset-codex"),
+    btnCloseCodex: document.getElementById("btn-close-codex"),
+
+    oddsModal: document.getElementById("odds-modal"),
+    oddsTbody: document.getElementById("odds-tbody"),
+    btnCloseOdds: document.getElementById("btn-close-odds")
+  };
+
+  const fx = new StageFX(els.fxCanvas);
+  const tearStrip = new TearStripCanvas(els.tearCanvas);
+
+  const state = {
+    phase: "SEALED", // SEALED | TEARING | BURSTING | CARDS
+    godPackArmed: false,
+    currentPack: null,
+    packSensed: false,
+    collection: loadCollection(),
+    flippedMask: [false, false, false, false, false],
+    bannerTimer: null,
+    resetConfirmTimer: null,
+
+    // Shake detection state
+    shake: {
+      activePointer: null,
+      lastX: null,
+      lastDir: 0,
+      reversals: 0,
+      travel: 0,
+      lastTime: 0,
+      tiltX: 0,
+      tiltY: 0,
+      offsetX: 0
+    },
+
+    // Tear drag state
+    tear: {
+      dragging: false,
+      pointerId: null,
+      startX: 0,
+      lastSeg: 0,
+      snapAnimId: null
+    },
+
+    // Inspect 3D state
+    inspect: {
+      open: false,
+      card: null,
+      isAlt: false,
+      pointerDownX: 0,
+      pointerDownY: 0,
+      moved: false
+    }
+  };
+
+  // Unlock audio on first user interaction anywhere
+  function handleFirstGesture() {
+    audio.unlock();
+  }
+  window.addEventListener("pointerdown", handleFirstGesture, { passive: true });
+  window.addEventListener("keydown", handleFirstGesture, { passive: true });
+
+  /* =========================================================================
+     8. STAGE INITIALIZATION & PACK LIFECYCLE
+     ========================================================================= */
+  function updateCodexCounter() {
+    const owned = Object.keys(state.collection).length;
+    const total = PRISM_CONFIG.cards.length;
+    els.codexCount.textContent = `${owned}/${total}`;
+  }
+
+  function updateGodPackButton() {
+    if (state.godPackArmed) {
+      els.btnGodPack.classList.add("god-armed");
+      els.godPackLabel.textContent = "全闪测试：欧皇已装填";
+    } else {
+      els.btnGodPack.classList.remove("god-armed");
+      els.godPackLabel.textContent = "全闪测试：欧皇待命";
+    }
+  }
+
+  function prepareNewPack() {
+    state.phase = "SEALED";
+    state.packSensed = false;
+    state.flippedMask = [false, false, false, false, false];
+    state.currentPack = rollPack(state.godPackArmed);
+
+    // Reset visuals
+    els.cardsStage.classList.remove("active");
+    els.cardsFan.innerHTML = "";
+    els.actionRow.classList.add("hidden");
+
+    els.packScene.classList.remove("pack-hidden");
+    els.packBodyTilt.classList.remove("vibrating");
+    els.packBodyTilt.style.transform = "";
+    els.packAura.className = "pack-aura";
+
+    els.stageHint.classList.remove("sensed");
+    els.stageHint.style.removeProperty("--sense-color");
+    els.stageHint.textContent = "左右晃动卡包验包 · 按住顶部 SEAL 条横向撕开";
+
+    // Reset shake tracker
+    state.shake.lastX = null;
+    state.shake.lastDir = 0;
+    state.shake.reversals = 0;
+    state.shake.travel = 0;
+
+    // Reset tear canvas
+    if (state.tear.snapAnimId) cancelAnimationFrame(state.tear.snapAnimId);
+    tearStrip.reset(state.currentPack.maxRarity);
+    els.tearHitZone.setAttribute("aria-valuenow", "0");
+    requestAnimationFrame(() => tearStrip.resize());
+  }
+
+  /* =========================================================================
+     9. PACK SHAKING (验包感应) + FOIL SHIMMER
+     ========================================================================= */
+  function updatePackFoilPointer(clientX, clientY) {
+    const rect = els.packFoil.getBoundingClientRect();
+    if (!rect.width) return;
+    const nx = (clientX - rect.left) / rect.width;   // 0..1
+    const ny = (clientY - rect.top) / rect.height;   // 0..1
+    const clampedX = Math.max(-0.2, Math.min(1.2, nx));
+    const clampedY = Math.max(-0.2, Math.min(1.2, ny));
+
+    const foilX = (clampedX - 0.5) * 34;
+    const foilY = (clampedY - 0.5) * 26;
+    const angle = 112 + (clampedX - 0.5) * 46;
+
+    els.packFoil.style.setProperty("--foil-x", `${foilX.toFixed(1)}%`);
+    els.packFoil.style.setProperty("--foil-y", `${foilY.toFixed(1)}%`);
+    els.packFoil.style.setProperty("--foil-angle", `${angle.toFixed(1)}deg`);
+    els.packFoil.style.setProperty("--spot-x", `${(clampedX * 100).toFixed(1)}%`);
+    els.packFoil.style.setProperty("--spot-y", `${(clampedY * 100).toFixed(1)}%`);
+
+    if (state.phase === "SEALED" && !state.tear.dragging) {
+      const rx = (0.5 - clampedY) * 11;
+      const ry = (clampedX - 0.5) * 14;
+      state.shake.tiltX = rx;
+      state.shake.tiltY = ry;
+      applyPackTransform();
+    }
+  }
+
+  function applyPackTransform() {
+    if (state.phase !== "SEALED" && state.phase !== "TEARING") return;
+    const tx = state.shake.offsetX;
+    const rotZ = tx * 0.24;
+    els.packBodyTilt.style.transform =
+      `translateX(${tx.toFixed(1)}px) rotateX(${state.shake.tiltX.toFixed(1)}deg) rotateY(${state.shake.tiltY.toFixed(1)}deg) rotateZ(${rotZ.toFixed(2)}deg)`;
+  }
+
+  function triggerPackSense() {
+    if (state.packSensed || state.phase !== "SEALED") return;
+    state.packSensed = true;
+    const maxR = state.currentPack.maxRarity;
+
+    els.packAura.className = `pack-aura active ${maxR.auraClass}`;
+    els.packBodyTilt.classList.add("vibrating");
+
+    els.stageHint.classList.add("sensed");
+    els.stageHint.style.setProperty("--sense-color", maxR.color);
+    els.stageHint.textContent = `验包感应：封口透出「${maxR.auraName}」· 拖动顶部撕开`;
+
+    audio.playSenseAura(maxR.rank);
+
+    // Emit subtle aura sparks from seal seam
+    const rect = els.packFoil.getBoundingClientRect();
+    fx.emitTearSparks(rect.left + rect.width * 0.5, rect.top + 42, maxR.color, 10);
+
+    // Stop micro vibration gracefully after 1.15s while keeping glow active
+    setTimeout(() => {
+      if (state.phase === "SEALED") {
+        els.packBodyTilt.classList.remove("vibrating");
+      }
+    }, 1150);
+  }
+
+  function feedShakeMotion(clientX) {
+    if (state.phase !== "SEALED" || state.tear.dragging) return;
+    const now = performance.now();
+    const s = state.shake;
+
+    if (s.lastX === null || now - s.lastTime > 650) {
+      s.lastX = clientX;
+      s.lastTime = now;
+      s.reversals = 0;
+      s.travel = 0;
+      s.lastDir = 0;
+      return;
+    }
+
+    const dx = clientX - s.lastX;
+    s.lastX = clientX;
+    s.lastTime = now;
+
+    if (Math.abs(dx) < 3) return;
+
+    // Gentle damped horizontal sway feedback
+    s.offsetX = Math.max(-18, Math.min(18, s.offsetX * 0.6 + dx * 0.45));
+    applyPackTransform();
+
+    const dir = dx > 0 ? 1 : -1;
+    s.travel += Math.abs(dx);
+
+    if (s.lastDir !== 0 && dir !== s.lastDir) {
+      s.reversals++;
+      audio.playShakeTick(Math.min(1, Math.abs(dx) / 28));
+    }
+    s.lastDir = dir;
+
+    if (!state.packSensed && s.reversals >= 2 && s.travel >= 120) {
+      triggerPackSense();
+    }
+  }
+
+  // Smooth spring decay for pack shake sway
+  setInterval(() => {
+    if (Math.abs(state.shake.offsetX) > 0.2) {
+      state.shake.offsetX *= 0.78;
+      if (Math.abs(state.shake.offsetX) <= 0.2) state.shake.offsetX = 0;
+      applyPackTransform();
+    }
+  }, 24);
+
+  // Desktop hover shimmer + rapid mouse shake on pack
+  els.packFoil.addEventListener("pointermove", (e) => {
+    updatePackFoilPointer(e.clientX, e.clientY);
+    if (e.pointerType === "mouse" || state.shake.activePointer === e.pointerId) {
+      feedShakeMotion(e.clientX);
+    }
+  });
+
+  els.packFoil.addEventListener("pointerdown", (e) => {
+    if (state.phase !== "SEALED") return;
+    audio.unlock();
+    state.shake.activePointer = e.pointerId;
+    state.shake.lastX = e.clientX;
+    state.shake.lastTime = performance.now();
+    try { els.packFoil.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  els.packFoil.addEventListener("pointerup", (e) => {
+    if (state.shake.activePointer === e.pointerId) {
+      state.shake.activePointer = null;
+    }
+  });
+
+  els.packFoil.addEventListener("pointerleave", () => {
+    state.shake.tiltX = 0;
+    state.shake.tiltY = 0;
+    applyPackTransform();
+  });
+
+  /* =========================================================================
+     10. 96-SEGMENT TEARING & ELASTIC SNAP-BACK + BURST
+     ========================================================================= */
+  function startSnapBack() {
+    if (state.tear.snapAnimId) cancelAnimationFrame(state.tear.snapAnimId);
+    const startP = tearStrip.progress;
+    if (startP <= 0.005) {
+      tearStrip.progress = 0;
+      tearStrip.draw();
+      state.phase = "SEALED";
+      return;
+    }
+
+    audio.playSnapBack();
+    const startTime = performance.now();
+    const duration = 360;
+
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTime) / duration);
+      // Elastic ease-out snap back to 0
+      const ease = 1 - Math.pow(1 - t, 3) * Math.cos(t * Math.PI * 1.4);
+      tearStrip.progress = Math.max(0, startP * (1 - ease));
+      tearStrip.draw();
+      els.tearHitZone.setAttribute("aria-valuenow", String(Math.round(tearStrip.progress * 100)));
+
+      if (t < 1) {
+        state.tear.snapAnimId = requestAnimationFrame(tick);
+      } else {
+        tearStrip.progress = 0;
+        tearStrip.draw();
+        state.tear.snapAnimId = null;
+        if (state.phase === "TEARING") {
+          state.phase = "SEALED";
+          els.stageHint.textContent = state.packSensed
+            ? `验包感应：封口透出「${state.currentPack.maxRarity.auraName}」· 拖动顶部撕开`
+            : "差一点就撕开了！按住顶部 SEAL 条拉到底撕穿";
+        }
+      }
+    };
+    state.tear.snapAnimId = requestAnimationFrame(tick);
+  }
+
+  function completePackTear() {
+    if (state.phase === "BURSTING" || state.phase === "CARDS") return;
+    state.phase = "BURSTING";
+    state.tear.dragging = false;
+
+    // Auto-disarm God Pack test switch after consuming the pack
+    if (state.godPackArmed) {
+      state.godPackArmed = false;
+      updateGodPackButton();
+    }
+
+    tearStrip.progress = 1;
+    tearStrip.detached = true;
+    els.tearHitZone.setAttribute("aria-valuenow", "100");
+    els.packBodyTilt.classList.remove("vibrating");
+
+    // Rainbow pillar + particles at pack mouth
+    const packRect = els.packFoil.getBoundingClientRect();
+    const burstX = packRect.left + packRect.width * 0.5;
+    const burstY = packRect.top + 44;
+    fx.triggerRainbowBurst(burstX, burstY);
+    audio.playTearBurst();
+
+    els.stageHint.classList.remove("sensed");
+    els.stageHint.textContent = "卡包已撕开 · 正在释放 5 张全息卡牌";
+
+    // Animate detached strip flying off
+    const detachStart = performance.now();
+    const animDetach = (now) => {
+      const t = Math.min(1, (now - detachStart) / 340);
+      tearStrip.detachT = t;
+      tearStrip.draw();
+      if (t < 1) requestAnimationFrame(animDetach);
+    };
+    requestAnimationFrame(animDetach);
+
+    // Recede pack and eject 5 cards
+    setTimeout(() => {
+      els.packScene.classList.add("pack-hidden");
+      ejectFiveCards();
+    }, 340);
+  }
+
+  els.tearHitZone.addEventListener("pointerdown", (e) => {
+    if (state.phase !== "SEALED" && state.phase !== "TEARING") return;
+    e.stopPropagation();
+    audio.unlock();
+
+    if (state.tear.snapAnimId) {
+      cancelAnimationFrame(state.tear.snapAnimId);
+      state.tear.snapAnimId = null;
+    }
+
+    const rect = els.packFoil.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width;
+    // Allow dragging left->right (default) or right->left if grabbed near right edge
+    tearStrip.direction = relX > 0.72 ? -1 : 1;
+
+    state.phase = "TEARING";
+    state.tear.dragging = true;
+    state.tear.pointerId = e.pointerId;
+    state.tear.startX = e.clientX;
+    state.tear.lastSeg = 0;
+
+    els.packBodyTilt.classList.remove("vibrating");
+    state.shake.tiltX = 0;
+    state.shake.tiltY = 0;
+    state.shake.offsetX = 0;
+    applyPackTransform();
+
+    try { els.tearHitZone.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  els.tearHitZone.addEventListener("pointermove", (e) => {
+    if (!state.tear.dragging || e.pointerId !== state.tear.pointerId) return;
+    e.stopPropagation();
+
+    const rect = els.packFoil.getBoundingClientRect();
+    const dir = tearStrip.direction;
+    const rawDelta = (e.clientX - state.tear.startX) * dir;
+    const progress = Math.max(0, Math.min(1, rawDelta / (rect.width * 0.86)));
+
+    tearStrip.progress = progress;
+    tearStrip.draw();
+    els.tearHitZone.setAttribute("aria-valuenow", String(Math.round(progress * 100)));
+
+    // Slight tactile pack tug during tearing
+    els.packBodyTilt.style.transform = `translateX(${(dir * progress * 6).toFixed(1)}px) rotateZ(${(dir * progress * 1.4).toFixed(2)}deg)`;
+
+    const curSeg = Math.floor(progress * PRISM_CONFIG.tearSegments);
+    if (curSeg > state.tear.lastSeg) {
+      state.tear.lastSeg = curSeg;
+      audio.playTearTick(progress);
+
+      if (curSeg % 4 === 0) {
+        const sparkX = dir === 1
+          ? rect.left + progress * rect.width
+          : rect.right - progress * rect.width;
+        fx.emitTearSparks(sparkX, rect.top + 44, state.currentPack.maxRarity.color, 3);
+      }
+    }
+
+    if (progress >= PRISM_CONFIG.tearCompleteThreshold) {
+      completePackTear();
+    }
+  });
+
+  function handleTearRelease(e) {
+    if (!state.tear.dragging || e.pointerId !== state.tear.pointerId) return;
+    state.tear.dragging = false;
+    state.tear.pointerId = null;
+    els.packBodyTilt.style.transform = "";
+
+    if (state.phase === "TEARING") {
+      if (tearStrip.progress >= PRISM_CONFIG.tearCompleteThreshold) {
+        completePackTear();
+      } else {
+        startSnapBack();
+      }
+    }
+  }
+
+  els.tearHitZone.addEventListener("pointerup", handleTearRelease);
+  els.tearHitZone.addEventListener("pointercancel", handleTearRelease);
+
+  /* =========================================================================
+     11. CARD EJECTION, 3D FLIP, NEW BADGE & HIGH-RARITY BANNER
+     ========================================================================= */
+  function ejectFiveCards() {
+    state.phase = "CARDS";
+    els.cardsStage.classList.add("active");
+    els.cardsFan.innerHTML = "";
+
+    const fanAngles = [-6, -3, 0, 3, 6];
+    const fanOffsetsY = [14, 4, 0, 4, 14];
+    const isNarrow = window.innerWidth <= 860;
+
+    state.currentPack.pulls.forEach((pull, idx) => {
+      const slot = document.createElement("div");
+      slot.className = "card-slot";
+      slot.dataset.index = String(idx);
+
+      // Ejection origin from center pack mouth
+      const ejectX = (2 - idx) * (isNarrow ? 45 : 95);
+      slot.style.setProperty("--eject-x", `${ejectX}px`);
+      slot.style.setProperty("--eject-y", "160px");
+      slot.style.setProperty("--eject-rot", `${(idx - 2) * 14}deg`);
+      slot.style.setProperty("--fan-rot", isNarrow ? "0deg" : `${fanAngles[idx]}deg`);
+      slot.style.setProperty("--fan-y", isNarrow ? "0px" : `${fanOffsetsY[idx]}px`);
+
+      slot.innerHTML = `
+        <span class="new-badge" data-new-badge>NEW</span>
+        <div class="card-3d">
+          <div class="card-face card-back">
+            <div class="card-back-top">ARCHIVE · S01</div>
+            <div class="card-back-emblem">${renderCardBackSVG()}</div>
+            <div class="card-back-bottom">PRISM COLLECTIBLE</div>
+          </div>
+          <div class="card-face card-front">
+            ${buildCardMarkup(pull.card, pull.isAlt)}
+          </div>
+        </div>
+      `;
+
+      slot.addEventListener("click", () => onCardSlotClick(idx, slot));
+      els.cardsFan.appendChild(slot);
+
+      // Staggered spring landing
+      setTimeout(() => {
+        slot.classList.add("landed");
+        audio.playFlip();
+      }, 70 + idx * 95);
+    });
+
+    // Show action controls
+    els.actionRow.classList.remove("hidden");
+    els.btnFlipAll.style.display = "";
+    els.stageHint.textContent = "点击单张卡背翻开 · 点击已翻开卡牌进入 3D 全息检视";
+  }
+
+  function showRarityBanner(card, isAlt) {
+    const rar = PRISM_CONFIG.rarities[card.rarity];
+    if (!rar || rar.rank < 4) return;
+
+    if (state.bannerTimer) clearTimeout(state.bannerTimer);
+    els.rarityBanner.className = `rarity-banner active ${rar.key === "SECRET" ? "tier-secret" : "tier-ultra"}`;
+    els.bannerKicker.textContent = rar.bannerKicker;
+    const altSuffix = isAlt ? "（逆闪异画）" : ` ${card.zh}`;
+    els.bannerTitle.textContent = `${rar.bannerPrefix} · ${card.en}${altSuffix}`;
+
+    fx.triggerCelebrationConfetti(rar.key === "SECRET");
+
+    state.bannerTimer = setTimeout(() => {
+      els.rarityBanner.classList.remove("active");
+    }, 2400);
+  }
+
+  els.rarityBanner.addEventListener("click", () => {
+    if (state.bannerTimer) clearTimeout(state.bannerTimer);
+    els.rarityBanner.classList.remove("active");
+  });
+
+  function flipCardAt(idx) {
+    if (state.flippedMask[idx]) return;
+    state.flippedMask[idx] = true;
+
+    const slot = els.cardsFan.querySelector(`.card-slot[data-index="${idx}"]`);
+    if (!slot) return;
+
+    const pull = state.currentPack.pulls[idx];
+    const { card, isAlt } = pull;
+
+    // Check if newly discovered before recording
+    const existing = state.collection[card.id];
+    const isNewCard = !existing || (isAlt && !existing.alt);
+
+    if (!existing) {
+      state.collection[card.id] = { count: 1, alt: isAlt };
+    } else {
+      existing.count += 1;
+      if (isAlt) existing.alt = true;
+    }
+    saveCollection(state.collection);
+    updateCodexCounter();
+
+    if (isNewCard) {
+      const badge = slot.querySelector("[data-new-badge]");
+      if (badge) badge.classList.add("show");
+    }
+
+    slot.classList.add("flipped");
+    audio.playFlip();
+    audio.playRaritySting(card.rarity, isAlt);
+
+    const rar = PRISM_CONFIG.rarities[card.rarity];
+    if (rar.rank >= 4) {
+      showRarityBanner(card, isAlt);
+    }
+
+    // Hide "一键翻开" once all 5 are flipped
+    if (state.flippedMask.every(Boolean)) {
+      els.btnFlipAll.style.display = "none";
+      els.stageHint.textContent = "全部翻开完成 · 点击任意卡牌进入 3D 全息检视";
+    }
+  }
+
+  function onCardSlotClick(idx) {
+    audio.unlock();
+    if (!state.flippedMask[idx]) {
+      flipCardAt(idx);
+    } else {
+      const pull = state.currentPack.pulls[idx];
+      openInspect(pull.card, pull.isAlt);
+    }
+  }
+
+  els.btnFlipAll.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    let delay = 0;
+    state.flippedMask.forEach((flipped, idx) => {
+      if (!flipped) {
+        setTimeout(() => flipCardAt(idx), delay);
+        delay += 165;
+      }
+    });
+  });
+
+  els.btnNextPack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    if (state.bannerTimer) clearTimeout(state.bannerTimer);
+    els.rarityBanner.classList.remove("active");
+    prepareNewPack();
+  });
+
+  /* =========================================================================
+     12. 3D HOLOGRAPHIC INSPECTION MODAL (TEXT-SAFE GLARE AVOIDANCE)
+     ========================================================================= */
+  function renderInspectCard() {
+    const { card, isAlt } = state.inspect;
+    if (!card) return;
+    els.inspectCardWrap.innerHTML = buildCardMarkup(card, isAlt);
+    els.inspectCardWrap.style.transform = "rotateX(0deg) rotateY(0deg)";
+
+    // Show variant toggle button if user unlocked both standard & alt Astral
+    const rec = state.collection[card.id];
+    if (card.hasAlt && rec && rec.alt) {
+      els.btnInspectAlt.style.display = "";
+      els.btnInspectAlt.textContent = isAlt ? "查看标准版" : "查看逆闪异画";
+    } else {
+      els.btnInspectAlt.style.display = "none";
+    }
+  }
+
+  function openInspect(card, isAlt = false) {
+    audio.playClick();
+    state.inspect.open = true;
+    state.inspect.card = card;
+    state.inspect.isAlt = isAlt;
+    renderInspectCard();
+    els.inspectOverlay.classList.add("open");
+  }
+
+  function closeInspect() {
+    if (!state.inspect.open) return;
+    audio.playClick();
+    state.inspect.open = false;
+    els.inspectOverlay.classList.remove("open");
+  }
+
+  function updateInspectTilt(clientX, clientY) {
+    if (!state.inspect.open) return;
+    const rect = els.inspectCardWrap.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const cx = rect.left + rect.width * 0.5;
+    const cy = rect.top + rect.height * 0.5;
+    const nx = Math.max(-1, Math.min(1, (clientX - cx) / (rect.width * 0.68)));
+    const ny = Math.max(-1, Math.min(1, (clientY - cy) / (rect.height * 0.68)));
+
+    const rotY = nx * 22;
+    const rotX = -ny * 18;
+    els.inspectCardWrap.style.transform = `rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale(1.02)`;
+
+    const cardEl = els.inspectCardWrap.querySelector(".prism-card");
+    if (cardEl) {
+      cardEl.style.setProperty("--holo-x", `${(-nx * 28).toFixed(1)}%`);
+      cardEl.style.setProperty("--holo-y", `${(-ny * 22).toFixed(1)}%`);
+      cardEl.style.setProperty("--holo-angle", `${(125 + nx * 45).toFixed(1)}deg`);
+      cardEl.style.setProperty("--glare-x", `${(50 + nx * 38).toFixed(1)}%`);
+      cardEl.style.setProperty("--glare-y", `${(42 + ny * 26).toFixed(1)}%`);
+    }
+  }
+
+  els.inspectOverlay.addEventListener("pointermove", (e) => {
+    updateInspectTilt(e.clientX, e.clientY);
+    if (state.inspect.pointerDownX !== null) {
+      const dist = Math.hypot(e.clientX - state.inspect.pointerDownX, e.clientY - state.inspect.pointerDownY);
+      if (dist > 10) state.inspect.moved = true;
+    }
+  });
+
+  els.inspectOverlay.addEventListener("pointerdown", (e) => {
+    state.inspect.pointerDownX = e.clientX;
+    state.inspect.pointerDownY = e.clientY;
+    state.inspect.moved = false;
+  });
+
+  els.inspectOverlay.addEventListener("click", (e) => {
+    if (e.target === els.btnInspectAlt || els.btnInspectAlt.contains(e.target)) return;
+    if (state.inspect.moved) return;
+    closeInspect();
+  });
+
+  els.btnInspectAlt.addEventListener("click", (e) => {
+    e.stopPropagation();
+    audio.playClick();
+    state.inspect.isAlt = !state.inspect.isAlt;
+    renderInspectCard();
+  });
+
+  /* =========================================================================
+     13. COLLECTION CODEX & PROBABILITY DISCLOSURE MODALS
+     ========================================================================= */
+  function renderCodex() {
+    const ownedKeys = Object.keys(state.collection);
+    const total = PRISM_CONFIG.cards.length;
+    const altUnlocked = state.collection["NO.012"] && state.collection["NO.012"].alt;
+    els.codexSub.textContent = `已收录 ${ownedKeys.length} / ${total}${altUnlocked ? " · ★ 已解锁 Astral 逆闪异画" : ""} · 点击已收集卡牌进入 3D 全息检视`;
+
+    els.codexGrid.innerHTML = "";
+    PRISM_CONFIG.cards.forEach((card) => {
+      const rec = state.collection[card.id];
+      const rar = PRISM_CONFIG.rarities[card.rarity];
+      const cell = document.createElement("div");
+
+      if (rec) {
+        cell.className = "codex-cell unlocked";
+        const showAlt = Boolean(card.hasAlt && rec.alt);
+        cell.innerHTML = `
+          ${buildCardMarkup(card, showAlt)}
+          <span class="codex-owned-tag">×${rec.count}</span>
+        `;
+        cell.addEventListener("click", () => {
+          openInspect(card, showAlt);
+        });
+      } else {
+        cell.className = "codex-cell";
+        cell.innerHTML = `
+          <div class="codex-locked">
+            <div class="codex-silhouette">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.65">
+                <path d="M12 2 L14.4 9.6 L22 12 L14.4 14.4 L12 22 L9.6 14.4 L2 12 L9.6 9.6 Z"/>
+              </svg>
+            </div>
+            <div class="codex-locked-num">${card.id}</div>
+            <div class="codex-locked-stars">${rar.stars}</div>
+          </div>
+        `;
+      }
+      els.codexGrid.appendChild(cell);
+    });
+  }
+
+  function openCodex() {
+    audio.unlock();
+    audio.playClick();
+    renderCodex();
+    els.codexModal.classList.add("open");
+  }
+
+  function closeCodex() {
+    audio.playClick();
+    els.codexModal.classList.remove("open");
+    cancelResetConfirm();
+  }
+
+  function cancelResetConfirm() {
+    if (state.resetConfirmTimer) {
+      clearTimeout(state.resetConfirmTimer);
+      state.resetConfirmTimer = null;
+    }
+    els.btnResetCodex.classList.remove("confirming");
+    els.btnResetCodex.textContent = "重置典藏";
+  }
+
+  els.btnResetCodex.addEventListener("click", () => {
+    audio.playClick();
+    if (!els.btnResetCodex.classList.contains("confirming")) {
+      els.btnResetCodex.classList.add("confirming");
+      els.btnResetCodex.textContent = "再次点击确认清空";
+      state.resetConfirmTimer = setTimeout(cancelResetConfirm, 4000);
+    } else {
+      cancelResetConfirm();
+      state.collection = {};
+      saveCollection(state.collection);
+      updateCodexCounter();
+      renderCodex();
+    }
+  });
+
+  els.btnCodex.addEventListener("click", openCodex);
+  els.btnCloseCodex.addEventListener("click", closeCodex);
+  els.codexModal.addEventListener("click", (e) => {
+    if (e.target === els.codexModal) closeCodex();
+  });
+
+  // Render Odds Disclosure Table
+  function renderOddsTable() {
+    const order = ["COMMON", "RARE", "HOLO", "ULTRA", "SECRET"];
+    els.oddsTbody.innerHTML = order.map((key) => {
+      const r = PRISM_CONFIG.rarities[key];
+      const names = cardsByRarity[key].map(c => `${c.en} ${c.zh}`).join(" / ");
+      return `
+        <tr>
+          <td><strong style="color:${r.color}">${r.label} ${r.stars}</strong></td>
+          <td style="font-size:12px;color:var(--text-secondary)">${names}</td>
+          <td class="odds-rate">${Math.round(r.rate * 100)}%</td>
+        </tr>`;
+    }).join("");
+  }
+
+  els.btnOdds.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    els.oddsModal.classList.add("open");
+  });
+  els.btnCloseOdds.addEventListener("click", () => {
+    audio.playClick();
+    els.oddsModal.classList.remove("open");
+  });
+  els.oddsModal.addEventListener("click", (e) => {
+    if (e.target === els.oddsModal) {
+      audio.playClick();
+      els.oddsModal.classList.remove("open");
+    }
+  });
+
+  /* =========================================================================
+     14. TOP CONTROLS: STAGE THEME, SOUND TOGGLE, GOD-PACK TEST SWITCH
+     ========================================================================= */
+  els.btnTheme.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    const isDay = document.body.classList.toggle("theme-daylight");
+    els.themeLabel.textContent = isDay ? "暗房舞台" : "白昼展台";
+    els.iconTheme.innerHTML = isDay
+      ? `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>`
+      : `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+  });
+
+  els.btnSound.addEventListener("click", () => {
+    audio.enabled = !audio.enabled;
+    if (audio.enabled) {
+      audio.unlock();
+      audio.playClick();
+    }
+    els.soundLabel.textContent = audio.enabled ? "音效开" : "已静音";
+    els.iconSound.innerHTML = audio.enabled
+      ? `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`
+      : `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`;
+  });
+
+  els.btnGodPack.addEventListener("click", () => {
+    audio.unlock();
+    audio.playClick();
+    state.godPackArmed = !state.godPackArmed;
+    updateGodPackButton();
+
+    // If a sealed pack is currently waiting on stage, re-roll it immediately so shaking reflects God Pack!
+    if (state.phase === "SEALED") {
+      prepareNewPack();
+      els.stageHint.textContent = state.godPackArmed
+        ? "欧皇全闪包已装填 · 左右晃动感应高罕气息，拖动顶部撕开"
+        : "左右晃动卡包验包 · 按住顶部 SEAL 条横向撕开";
+    }
+  });
+
+  // Escape key closes active modal/inspect layer
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (state.inspect.open) closeInspect();
+      else if (els.codexModal.classList.contains("open")) closeCodex();
+      else if (els.oddsModal.classList.contains("open")) els.oddsModal.classList.remove("open");
+    }
+  });
+
+  /* =========================================================================
+     15. BOOTSTRAP
+     ========================================================================= */
+  renderOddsTable();
+  updateCodexCounter();
+  updateGodPackButton();
+  prepareNewPack();
+})();
+</script>
+</body>
+</html>
